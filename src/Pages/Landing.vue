@@ -272,7 +272,7 @@ const join = () => {
     </section>
 
     <!-- Our Library: full screen spacing -->
-    <section id="library" class="landing-section">
+    <section v-reveal id="library" class="landing-section">
       <div class="mx-auto max-w-6xl px-5 text-center">
         <h2 class="leading-[1.05] tracking-tight">
           <!-- <span class="block font-sans text-2xl font-normal sm:text-4xl">Our Library</span> -->
@@ -298,7 +298,7 @@ const join = () => {
     </section>
 
     <!-- Explore by category: full screen spacing -->
-    <section id="categories" class="landing-section border-y border-black/5 bg-paper">
+    <section v-reveal id="categories" class="landing-section border-y border-black/5 bg-paper">
       <div class="mx-auto max-w-6xl px-5 text-center">
         <h2 class="font-display text-3xl font-medium tracking-tight sm:text-5xl">Explore By Category</h2>
         <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-neutral-500 sm:text-base">Pick a genre and see what your neighbours are sharing.</p>
@@ -319,7 +319,7 @@ const join = () => {
     </section>
 
     <!-- How it works: wave path with three steps -->
-    <section id="how" class="landing-section">
+    <section v-reveal id="how" class="landing-section">
       <div class="mx-auto w-full max-w-6xl px-5">
         <div class="text-center">
           <span class="inline-block rounded-full bg-brand-soft px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">Simple as 1-2-3</span>
@@ -392,7 +392,7 @@ const join = () => {
     </section>  
 
     <!-- Reader stories -->
-    <section id="readers" class="landing-section overflow-hidden border-t border-black/5 bg-paper">
+    <section v-reveal id="readers" class="landing-section overflow-hidden border-t border-black/5 bg-paper">
       <div class="mx-auto w-full max-w-6xl px-5">
         <div class="text-center">
           <span v-reveal class="inline-block rounded-full bg-brand-soft px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">Reader stories</span>

@@ -28,7 +28,7 @@ export const AVAILABILITY = [
 /* ------------------------------------------------------------------ *
  * 3. Normalisers: turn whatever the API returns into the shape the UI uses
  * ------------------------------------------------------------------ */
-function imageUrl(raw) {
+export function imageUrl(raw) {
   if (!raw) return null
   if (/^(https?:)?\/\//.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) return raw
   const path = raw.startsWith('/') ? raw : raw.startsWith('storage/') ? `/${raw}` : `/storage/${raw}`
@@ -38,9 +38,13 @@ function imageUrl(raw) {
 export function normalizeBook(b) {
   if (!b) return null
   const owner = b.owner ?? b.user ?? null
+  const cover = imageUrl(b.image_url ?? b.image ?? b.image_path ?? b.cover)
+  const extra = (b.images ?? b.photos ?? []).map((x) => imageUrl(typeof x === 'string' ? x : x?.url ?? x?.image_url ?? x?.path)).filter(Boolean)
+  const images = [...new Set([cover, ...extra].filter(Boolean))]
   return {
     ...b,
-    image_url: imageUrl(b.image_url ?? b.image ?? b.image_path ?? b.cover),
+    image_url: cover,
+    images,
     available_copies: b.available_copies ?? b.copies_available ?? b.copies ?? null,
     owner: owner ? { ...owner, reputation_score: owner.reputation_score ?? owner.rating ?? null } : null,
   }
@@ -148,7 +152,7 @@ const paged = (list, page, per = 8) => ({
   data: list.slice((page - 1) * per, page * per),
   current_page: page, last_page: Math.max(1, Math.ceil(list.length / per)), total: list.length,
 })
-const fromForm = (fd) => Object.fromEntries([...fd.entries()].filter(([k]) => k !== '_method'))
+const fromForm = (fd) => Object.fromEntries([...fd.entries()].filter(([k]) => k !== '_method' && !k.endsWith('[]')))
 const mockImage = (v) => (v instanceof File ? URL.createObjectURL(v) : null)
 
 // GET /api/my-books
@@ -162,7 +166,8 @@ export async function storeBook(formData) {
   if (USE_MOCK) {
     await wait()
     const d = fromForm(formData)
-    const b = { id: Date.now(), ...d, image_url: mockImage(d.image), user_id: 2, owner: mockBooks[0].owner, created_at: new Date().toISOString() }
+    const imgs = formData.getAll('images[]').map(mockImage).filter(Boolean)
+    const b = { id: Date.now(), ...d, image_url: imgs[0] || mockImage(d.image), images: imgs, user_id: 2, owner: mockBooks[0].owner, created_at: new Date().toISOString() }
     myMock = [b, ...myMock]
     return { data: b }
   }
@@ -173,8 +178,11 @@ export async function storeBook(formData) {
 export async function updateBook(id, formData) {
   if (USE_MOCK) {
     await wait()
-    const d = fromForm(formData); const img = mockImage(d.image); delete d.image
-    myMock = myMock.map((b) => (b.id === id ? { ...b, ...d, ...(img ? { image_url: img } : {}) } : b))
+    const d = fromForm(formData); delete d.image
+    const kept = formData.getAll('keep_images[]')
+    const added = formData.getAll('images[]').map(mockImage).filter(Boolean)
+    const imgs = [...kept, ...added]
+    myMock = myMock.map((b) => (b.id === id ? { ...b, ...d, ...(imgs.length ? { image_url: imgs[0], images: imgs } : { image_url: null, images: [] }) } : b))
     return { data: myMock.find((b) => b.id === id) }
   }
   formData.append('_method', 'PUT')

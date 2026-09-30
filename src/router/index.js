@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { auth } from '../stores/auth'
 import { USE_MOCK } from '../config'
+import { app } from '../stores/app'
 
 const routes = [
   { path: '/', component: () => import('../Pages/Landing.vue') },
@@ -15,7 +16,7 @@ const routes = [
   { path: '/forgot-password', component: () => import('../Pages/Auth/ForgotPassword.vue'), meta: { guest: true } },
   { path: '/reset-password/:token', component: () => import('../Pages/Auth/ResetPassword.vue'), meta: { guest: true }, props: true },
 
-  { path: '/logout', component: () => import('../Pages/Auth/Login.vue'), beforeEnter: async () => { await auth.logout(); return '/' } },
+  { path: '/logout', component: () => import('../Pages/Auth/Login.vue'), beforeEnter: async () => { await auth.logout(); app.stop(); return '/' } },
 
   { path: '/requests', component: () => import('../Pages/Requests.vue'), meta: { auth: true } },
   { path: '/messages', component: () => import('../Pages/Messages.vue'), meta: { auth: true } },

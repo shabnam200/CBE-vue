@@ -65,6 +65,7 @@ function mapNotification(n) {
   else if (t.includes('was accepted')) { type = 'accepted'; link = '/requests' }
   else if (t.includes('was rejected') || t.includes('was cancelled')) { type = 'rejected'; link = '/requests' }
   else if (t.includes('was completed')) { type = 'accepted'; link = '/requests' }
+  else if (t.includes('message')) { type = 'message'; link = '/messages' }
   else if (t.includes('rated you')) { type = 'review'; link = '/profile' }
   return { id: n.id, type, message: n.message, is_read: !!n.is_read, created_at: n.created_at, link }
 }
@@ -147,14 +148,36 @@ export async function submitReview(requestId, { rating, comment }) {
 const lastOf = (c) => c.messages[c.messages.length - 1] || null
 
 // GET /api/conversations  ->  { data: [{ id, user: {id,name,city}, book, unread, last_message: {text, at} }] }
+// Backend e per-conversation "unread" nai, tai browser e "last seen message id" rakhi.
+// Unread = onno manush er pathano message jar id last seen er cheye boro.
+const seenKey = () => `cbe_seen_${myId() ?? 'guest'}`
+const readSeen = () => { try { return JSON.parse(localStorage.getItem(seenKey()) || '{}') } catch { return {} } }
+export function markConversationSeen(convoId, lastMessageId) {
+  if (!lastMessageId) return
+  const seen = readSeen()
+  if ((seen[convoId] || 0) >= lastMessageId) return
+  seen[convoId] = lastMessageId
+  try { localStorage.setItem(seenKey(), JSON.stringify(seen)) } catch { /* quota */ }
+}
+
 export async function getConversations() {
   if (!USE_MOCK) {
     const rows = await allPages('/exchange-requests')
-    const list = rows
+    const base = rows
       .filter((r) => ['accepted', 'completed'].includes(r.status))
       .map(mapRequest)
       .map((r) => ({ id: r.id, user: r.other_user, book: r.book?.title || '', unread: 0, last_message: null }))
-    return { data: list }
+    const seen = readSeen()
+    // Prottek conversation er message anchi -> last message + unread count hishab korbo
+    await Promise.all(base.map(async (c) => {
+      try {
+        const msgs = (await http.get(`/exchange-requests/${c.id}/messages`)).data.map(mapMessage)
+        c.last_message = msgs[msgs.length - 1] || null
+        c.unread = msgs.filter((m) => m.from === 'them' && m.id > (seen[c.id] || 0)).length
+      } catch { /* ei conversation skip, baki gulo cholbe */ }
+    }))
+    base.sort((a, b) => new Date(b.last_message?.at || 0) - new Date(a.last_message?.at || 0))
+    return { data: base }
   }
   // ---- REAL API ----
   // const res = await http.get('/conversations')
@@ -171,7 +194,9 @@ export async function getConversations() {
 export async function getMessages(conversationId) {
   if (!USE_MOCK) {
     const rows = (await http.get(`/exchange-requests/${conversationId}/messages`)).data
-    return { data: rows.map(mapMessage) }
+    const data = rows.map(mapMessage)
+    markConversationSeen(conversationId, Math.max(0, ...data.map((m) => m.id)))
+    return { data }
   }
   // ---- REAL API ----
   // const res = await http.get(`/conversations/${conversationId}/messages`)
@@ -347,4 +372,26 @@ export async function getProfileSummary() {
   // ---- MOCK ----
   await wait()
   return { data: { stats: { ...profileStats }, reviews: clone(reviews) } }
+}
+
+/* ------------------------------------------------------------------ *
+ * AVATAR (profile photo)
+ * ------------------------------------------------------------------ */
+// POST /api/user/avatar  (FormData: avatar)  ->  { avatar_url }   <-- backend e ei route ta add korte hobe
+export async function uploadAvatar(file) {
+  if (!USE_MOCK) {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    const p = (await http.post('/user/avatar', fd)).data
+    return { avatar_url: p.avatar_url ?? p.data?.avatar_url ?? p.user?.avatar_url ?? null }
+  }
+  await wait(400)
+  return { avatar_url: null } // mock: local e save hoy (stores/app.js)
+}
+
+// DELETE /api/user/avatar
+export async function removeAvatarApi() {
+  if (!USE_MOCK) return (await http.delete('/user/avatar')).data
+  await wait(200)
+  return { data: true }
 }

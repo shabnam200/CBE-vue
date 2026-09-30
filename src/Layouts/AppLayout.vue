@@ -1,0 +1,29 @@
+<script setup>
+// Sidebar + Header + animated content. Shob logged-in page eta use kore.
+// Header er props (title, search-placeholder, filters, show-near-me, v-model:search ...) shorasori pass hoy ($attrs).
+import { onMounted } from 'vue'
+import Head from '@/Components/Head.vue'
+import Sidebar from '@/Components/Sidebar.vue'
+import Header from '@/Components/Header.vue'
+import { app } from '@/stores/app'
+
+defineOptions({ inheritAttrs: false })
+defineProps({ current: { type: String, required: true }, title: { type: String, default: '' } })
+onMounted(() => app.start())
+</script>
+
+<template>
+  <Head :title="`${title || current} - Book Haven`" />
+  <div class="flex h-screen overflow-hidden bg-paper font-sans text-ink">
+    <Sidebar :current-route="current" />
+    <div class="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto">
+      <Header v-bind="$attrs" :title="title || current">
+        <template v-if="$slots.actions" #actions><slot name="actions" /></template>
+      </Header>
+      <main class="flex min-w-0 flex-1 flex-col gap-4 p-4 pb-24 md:p-6 md:pb-6 animate-fade-up">
+        <slot />
+      </main>
+    </div>
+    <slot name="overlay" />
+  </div>
+</template>

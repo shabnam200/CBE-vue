@@ -52,20 +52,16 @@ export const categories = ['Fiction', 'Self-Development', 'Business', 'Poetry', 
 export const me = { id: 1, name: 'Kenson', city: 'Sylhet', reputation_score: 4.7 }
 
 export const testimonials = [
-  {
-    id: 1,
-    name: 'Tanvir Ahmed',
-    role: 'University Student',
-    content: 'This platform made exchanging my old semester books super easy. Highly recommended!',
-    avatar: ''
-  },
-  {
-    id: 2,
-    name: 'Sumaiya Rahman',
-    role: 'Reader',
-    content: 'Great community! I love the wishlist feature and how fast people respond.',
-    avatar: ''
-  }
+  { id: 1, name: 'Tanvir Ahmed', role: 'University Student', city: 'Sylhet', rating: 5, book: 'Atomic Habits',
+    text: 'This platform made exchanging my old semester books super easy. I swapped three books in my first week and met readers from my own campus.' },
+  { id: 2, name: 'Sumaiya Rahman', role: 'Reader', city: 'Dhaka', rating: 5, book: 'The Alchemist',
+    text: 'Great community! I love the wishlist alerts and how fast people respond.' },
+  { id: 3, name: 'Arif Hossain', role: 'Teacher', city: 'Chattogram', rating: 5, book: 'Feluda Samagra',
+    text: 'I donated two shelves of children\'s books to a nearby school. The whole handover took one chat.' },
+  { id: 4, name: 'Nusrat Jahan', role: 'Book Club Host', city: 'Dhaka', rating: 4, book: 'Milk and Honey',
+    text: 'Ratings make it easy to trust a new person. Lending to strangers finally feels safe.' },
+  { id: 5, name: 'Rahim Uddin', role: 'Engineer', city: 'Sylhet', rating: 5, book: 'Deep Work',
+    text: 'Found a book I had searched for months, just two streets away from my home.' },
 ];
 
 // ---- Dashboard er jonno lagbe (age export chilo na) ----

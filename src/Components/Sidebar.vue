@@ -6,7 +6,6 @@ import { auth } from '@/stores/auth'
 
 defineProps({ currentRoute: { type: String, default: 'Home' } })
 
-// [label, path, svg icon path]
 const base = [
   ['Home', '/dashboard', 'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
   ['My Books', '/my-books', 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14ZM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5'],
@@ -22,13 +21,12 @@ const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H
 </script>
 
 <template>
-  <!-- Desktop sidebar -->
-  <aside class="hidden w-56 shrink-0 md:block">
+  <aside class="hidden w-64 shrink-0 md:block">
     <div class="sticky top-0 flex h-screen flex-col border-r border-black/5 bg-white p-4">
       <Link href="/" class="flex items-center gap-2 whitespace-nowrap px-3 py-2 font-display text-base font-bold text-ink">
         <ApplicationLogo class="h-6 w-6 shrink-0 text-brand" /> <span class="text-sm font-semibold">Book Haven</span>
       </Link>
-      <nav class="mt-6 flex-1 space-y-1 text-sm">
+      <nav class="mt-4 flex-1 space-y-1 text-sm">
         <Link
           v-for="[t, h, d] in nav"
           :key="t"
@@ -47,7 +45,6 @@ const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H
     </div>
   </aside>
 
-  <!-- Mobile bottom bar -->
   <nav class="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-black/5 bg-white/95 backdrop-blur md:hidden" aria-label="Main">
     <Link
       v-for="[t, h, d] in nav"

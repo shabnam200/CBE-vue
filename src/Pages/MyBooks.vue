@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import Head from '@/Components/Head.vue'
 import Sidebar from '@/Components/Sidebar.vue'
+import Header from '@/Components/Header.vue'
 import BookCover from '@/Components/BookCover.vue'
 import { categories } from '@/data/mock'
 import { getMyBooks, storeBook, updateBook, deleteBook, apiError, CONDITIONS, AVAILABILITY } from '@/bookApi'
@@ -13,22 +14,31 @@ const toast = ref('')
 const badge = { exchange: 'Exchange', donate: 'Free', lend: 'Lend' }
 
 const showModal = ref(false)
-const editing = ref(null) // the book being edited, or null when adding
+const editing = ref(null)
 const saving = ref(false)
 const formError = ref('')
 const preview = ref('')
 const blank = () => ({ title: '', author: '', genre: categories[0] || 'Fiction', condition: 'good', availability_type: 'exchange', image: null })
 const form = ref(blank())
 
-const deleting = ref(null) // book waiting for delete confirmation
+const deleting = ref(null)
 const deleteBusy = ref(false)
+
+const search = ref('')
+const genre = ref('')
+const condition = ref('')
+const availability = ref('')
+const nearMe = ref(false)
+const notes = ref([])
+const bellOpen = ref(false)
+const me = ref({ name: '' })
+const unreadNotesCount = computed(() => notes.value.filter((n) => !n.is_read).length)
 
 let toastTimer
 const say = (t) => { toast.value = t; clearTimeout(toastTimer); toastTimer = setTimeout(() => (toast.value = ''), 2500) }
 
 const revokePreview = () => { if (preview.value.startsWith('blob:')) URL.revokeObjectURL(preview.value) }
 
-// GET /api/my-books
 async function load(page = 1) {
   loading.value = true
   try {
@@ -80,7 +90,6 @@ function onFile(e) {
   preview.value = URL.createObjectURL(file)
 }
 
-// POST /api/books  or  POST /api/books/{id} (_method=PUT)
 async function save() {
   formError.value = ''
   if (!form.value.title.trim() || !form.value.author.trim()) {
@@ -107,7 +116,6 @@ async function save() {
   }
 }
 
-// DELETE /api/books/{id}
 async function confirmDelete() {
   deleteBusy.value = true
   try {
@@ -137,56 +145,74 @@ const label = 'mb-1 block text-xs font-semibold text-neutral-600'
 
 <template>
   <Head title="My Books" />
-  <div class="flex min-h-screen bg-paper font-sans text-ink">
+  <div class="flex h-screen overflow-hidden bg-paper font-sans text-ink">
     <Sidebar currentRoute="My Books" />
 
-    <main class="min-w-0 flex-1 space-y-5 p-4 pb-24 md:pb-4">
-      <div class="flex items-center justify-between rounded-2xl border border-black/5 bg-white p-5">
-        <div>
-          <h1 class="font-display text-xl font-semibold text-brand">My Books</h1>
-          <p v-if="!loading && meta.total" class="mt-0.5 text-xs text-neutral-500">{{ meta.total }} listed</p>
-        </div>
-        <button v-if="myBooks.length" type="button" class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark" @click="openAdd">Add New Book</button>
-      </div>
+    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+      <Header 
+        v-model:search="search"
+        v-model:genre="genre"
+        v-model:condition="condition"
+        v-model:availability="availability"
+        v-model:nearMe="nearMe"
+        :categories="categories"
+        :CONDITIONS="CONDITIONS"
+        :AVAILABILITY="AVAILABILITY"
+        :unread="unreadNotesCount"
+        :notes="notes"
+        :bellOpen="bellOpen"
+        :me="me"
+        @toggle-bell="bellOpen = !bellOpen"
+      />
 
-      <section class="rounded-2xl border border-black/5 bg-white p-5 sm:p-8">
-        <div v-if="loading" class="grid animate-pulse grid-cols-2 gap-4 sm:grid-cols-4">
-          <div v-for="i in 4" :key="i"><div class="aspect-[3/4] rounded-lg bg-neutral-200"></div><div class="mt-2 h-3 w-24 rounded bg-neutral-200"></div></div>
-        </div>
-
-        <div v-else-if="myBooks.length" class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          <article v-for="b in myBooks" :key="b.id" class="flex flex-col rounded-xl border border-black/10 bg-white p-3 shadow-sm">
-            <div class="relative aspect-[3/4] overflow-hidden rounded-lg bg-neutral-100">
-              <BookCover :book="b" />
-              <span class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-brand shadow-sm">{{ badge[b.availability_type] }}</span>
-            </div>
-            <p class="mt-2 truncate text-sm font-medium">{{ b.title }}</p>
-            <p class="truncate text-xs text-neutral-500">by {{ b.author }}</p>
-            <div class="mt-3 flex gap-2">
-              <button type="button" class="flex-1 rounded-lg border border-black/10 py-1.5 text-xs font-medium transition-colors hover:bg-brand-soft hover:text-brand" @click="openEdit(b)">Edit</button>
-              <button type="button" class="flex-1 rounded-lg border border-red-200 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50" @click="deleting = b">Delete</button>
-            </div>
-          </article>
-        </div>
-
-        <div v-else class="flex flex-col items-center justify-center py-16 text-center">
-          <div class="max-w-sm space-y-3">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            </div>
-            <h3 class="font-display text-base font-semibold">No books added yet</h3>
-            <p class="text-sm text-neutral-500">Share your books with the community or list them for exchange.</p>
-            <button type="button" class="mt-2 inline-flex items-center rounded-xl bg-brand px-5 py-3 text-sm font-medium text-white shadow-lg shadow-brand/20 transition-colors hover:bg-brand-dark" @click="openAdd">Add Your First Book</button>
+      <main class="min-w-0 flex-1 space-y-5 p-5 pb-24 md:pb-6">
+        <div class="flex items-center justify-between rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+          <div>
+            <h1 class="font-display text-xl font-semibold text-brand">My Books</h1>
+            <p v-if="!loading && meta.total" class="mt-0.5 text-xs text-neutral-500">{{ meta.total }} listed</p>
           </div>
+          <button v-if="myBooks.length" type="button" class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark" @click="openAdd">Add New Book</button>
         </div>
 
-        <div v-if="meta.last_page > 1" class="mt-6 flex items-center justify-center gap-3 text-sm">
-          <button type="button" :disabled="meta.current_page <= 1 || loading" class="rounded-lg border border-black/10 px-3 py-1.5 transition-colors hover:bg-brand-soft disabled:opacity-40 disabled:hover:bg-transparent" @click="load(meta.current_page - 1)">Previous</button>
-          <span class="text-xs text-neutral-500">Page {{ meta.current_page }} of {{ meta.last_page }}</span>
-          <button type="button" :disabled="meta.current_page >= meta.last_page || loading" class="rounded-lg border border-black/10 px-3 py-1.5 transition-colors hover:bg-brand-soft disabled:opacity-40 disabled:hover:bg-transparent" @click="load(meta.current_page + 1)">Next</button>
-        </div>
-      </section>
-    </main>
+        <section class="rounded-2xl border border-black/5 bg-white p-5 sm:p-8 shadow-sm">
+          <div v-if="loading" class="grid animate-pulse grid-cols-2 gap-4 sm:grid-cols-4">
+            <div v-for="i in 4" :key="i"><div class="aspect-[3/4] rounded-lg bg-neutral-200"></div><div class="mt-2 h-3 w-24 rounded bg-neutral-200"></div></div>
+          </div>
+
+          <div v-else-if="myBooks.length" class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <article v-for="b in myBooks" :key="b.id" class="flex flex-col rounded-xl border border-black/10 bg-white p-3 shadow-sm">
+              <div class="relative aspect-[3/4] overflow-hidden rounded-lg bg-neutral-100">
+                <BookCover :book="b" />
+                <span class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-brand shadow-sm">{{ badge[b.availability_type] }}</span>
+              </div>
+              <p class="mt-2 truncate text-sm font-medium">{{ b.title }}</p>
+              <p class="truncate text-xs text-neutral-500">by {{ b.author }}</p>
+              <div class="mt-3 flex gap-2">
+                <button type="button" class="flex-1 rounded-lg border border-black/10 py-1.5 text-xs font-medium transition-colors hover:bg-brand-soft hover:text-brand" @click="openEdit(b)">Edit</button>
+                <button type="button" class="flex-1 rounded-lg border border-red-200 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50" @click="deleting = b">Delete</button>
+              </div>
+            </article>
+          </div>
+
+          <div v-else class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="max-w-sm space-y-3">
+              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              </div>
+              <h3 class="font-display text-base font-semibold">No books added yet</h3>
+              <p class="text-sm text-neutral-500">Share your books with the community or list them for exchange.</p>
+              <button type="button" class="mt-2 inline-flex items-center rounded-xl bg-brand px-5 py-3 text-sm font-medium text-white shadow-lg shadow-brand/20 transition-colors hover:bg-brand-dark" @click="openAdd">Add Your First Book</button>
+            </div>
+          </div>
+
+          <div v-if="meta.last_page > 1" class="mt-6 flex items-center justify-center gap-3 text-sm">
+            <button type="button" :disabled="meta.current_page <= 1 || loading" class="rounded-lg border border-black/10 px-3 py-1.5 transition-colors hover:bg-brand-soft disabled:opacity-40 disabled:hover:bg-transparent" @click="load(meta.current_page - 1)">Previous</button>
+            <span class="text-xs text-neutral-500">Page {{ meta.current_page }} of {{ meta.last_page }}</span>
+            <button type="button" :disabled="meta.current_page >= meta.last_page || loading" class="rounded-lg border border-black/10 px-3 py-1.5 transition-colors hover:bg-brand-soft disabled:opacity-40 disabled:hover:bg-transparent" @click="load(meta.current_page + 1)">Next</button>
+          </div>
+        </section>
+      </main>
+    </div>
 
     <!-- Add / Edit modal -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4" @click.self="closeModal">

@@ -130,6 +130,12 @@ export async function getBook(id) {
   return normalizeBook({ ...(p?.data ?? p?.book ?? p), available_copies: p?.available_copies }) // backend { book, available_copies }
 }
 
+export async function getAuthorPhoto(name) {
+  if (USE_MOCK) return ''
+  const { data } = await http.get('/open-library/author-photo', { params: { name } })
+  return data.avatar || ''
+}
+
 // GET /api/matches
 export async function getMatches() {
   if (USE_MOCK) {

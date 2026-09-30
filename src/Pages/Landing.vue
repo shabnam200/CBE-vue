@@ -174,29 +174,37 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ''
 })
 
-/* ---------- How it works (Wavy Process Section) ---------- */
-const processSteps = [
-  {
-    step: '1',
-    title: 'List your books',
-    description: 'Add a photo, the condition, and whether you want to exchange, donate or lend.',
-    icon: 'M3 21h18M3 7v1a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V7M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'
-  },
-  {
-    step: '2',
-    title: 'Send a request',
-    description: 'Find a book you want and ask its owner. They accept or decline securely.',
-    icon: 'M12 20V10M18 14l-6-6-6 6'
-  },
-  {
-    step: '3',
-    title: 'Chat and rate',
-    description: 'Once accepted, chat to plan the handover, then rate each other to build trust.',
-    icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
-  }
+/* ---------- How it works ---------- */
+const journey = [
+  { n: 1, title: 'List your books', text: 'Add a photo, the condition, and whether you want to exchange, donate or lend.',
+    d: 'M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20M12 7v6M9 10h6',
+    node: { left: '17%', top: '62.4%' }, box: { left: '3%', top: '9%', width: '27%' }, big: { left: '25%', top: '3%' } },
+  { n: 2, title: 'Send a request', text: 'Find a book you want and ask its owner. They accept or decline.',
+    d: 'm22 2-7 20-4-9-9-4 20-7ZM22 2 11 13',
+    node: { left: '50%', top: '22.6%' }, box: { left: '38%', top: '46%', width: '24%' }, big: { left: '58%', top: '40%' } },
+  { n: 3, title: 'Chat and rate', text: 'Once accepted, chat to plan the handover, then rate each other to build trust.',
+    d: 'M7.9 20A9 9 0 1 0 4 16.1L2 22ZM9 11.5h.01M12.5 11.5h.01M16 11.5h.01',
+    node: { left: '83%', top: '48.8%' }, box: { left: '71%', top: '68%', width: '24%' }, big: { left: '89%', top: '60%' } },
+]
+const posOf = (o) => ({ left: o.left, top: o.top })
+const boxOf = (o) => ({ left: o.left, top: o.top, width: o.width })
+
+/* ---------- Reader stories (numbers come from the data, not hard-coded) ---------- */
+const avgRating = computed(() => testimonials.reduce((sum, t) => sum + (t.rating || 5), 0) / (testimonials.length || 1))
+const cityCount = computed(() => new Set(catalog.value.map((b) => b?.owner?.city).filter(Boolean)).size)
+const readerStats = computed(() => [
+  [catalog.value.length, 'Books to share'],
+  [avgRating.value.toFixed(1), 'Average rating'],
+  [cityCount.value, 'Cities connected'],
+])
+const perks = [
+  { d: 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z', title: 'Wishlist alerts', text: 'Save the books you want. You get a notification the moment one is listed.' },
+  { d: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z', title: 'Ratings you can trust', text: 'Every completed exchange is rated, so you know who you are dealing with.' },
+  { d: 'M7.9 20A9 9 0 1 0 4 16.1L2 22Z', title: 'Private chat', text: 'Plan the handover in the app. No need to share your phone number.' },
+  { d: 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0ZM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z', title: 'Readers in your city', text: 'Filter by city and find books just a short trip away.' },
 ]
 
-const initials = (n) => n.split(' ').map((p) => p[0]).join('')
+const initials = (n) => String(n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('')
 const join = () => {
   router.push({ path: '/register', query: email.value ? { email: email.value } : {} })
 }
@@ -208,7 +216,7 @@ const join = () => {
 
     <!-- Navbar -->
     <header class="sticky top-0 z-30 border-b border-black/5 bg-white/90 backdrop-blur-md">
-      <nav class="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-5 py-4 sm:px-8">
+      <nav class="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] h-[4.3rem] items-center px-5 sm:px-8">
         <a href="#top" class="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
           <ApplicationLogo class="h-7 w-7 text-brand" /> Book Haven
         </a>
@@ -233,7 +241,7 @@ const join = () => {
     </header>
 
     <!-- Hero: full viewport height -->
-    <section id="top" class="relative isolate h-[calc(100svh-4.3rem)] min-h-[34rem] max-h-[60rem] scroll-mt-20 overflow-hidden flex flex-col justify-center">
+    <section id="top" class="landing-hero relative isolate flex flex-col justify-center overflow-hidden">
       <div aria-hidden="true" class="absolute inset-0 flex justify-center gap-3 px-2 sm:gap-4">
         <div v-for="col in heroCols" :key="col.key" class="h-full w-[6.2rem] shrink-0 sm:w-28 lg:w-32 xl:w-36" :class="col.cls">
           <div class="hero-track" :class="col.dir === 'up' ? 'hero-up' : 'hero-down'" :style="col.style">
@@ -264,11 +272,11 @@ const join = () => {
     </section>
 
     <!-- Our Library: full screen spacing -->
-    <section id="library" class="scroll-mt-20 min-h-[calc(100svh-4.3rem)] flex flex-col justify-center py-20">
+    <section id="library" class="landing-section">
       <div class="mx-auto max-w-6xl px-5 text-center">
         <h2 class="leading-[1.05] tracking-tight">
-          <span class="block font-sans text-2xl font-normal sm:text-4xl">Our Community</span>
-          <span class="block font-display text-3xl font-bold uppercase sm:text-5xl">Library</span>
+          <!-- <span class="block font-sans text-2xl font-normal sm:text-4xl">Our Library</span> -->
+          <span class="block font-display text-3xl font-bold uppercase sm:text-5xl">Our Library</span>
         </h2>
         <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-neutral-500">Tap any book to see its details and send a request.</p>
       </div>
@@ -290,7 +298,7 @@ const join = () => {
     </section>
 
     <!-- Explore by category: full screen spacing -->
-    <section id="categories" class="scroll-mt-20 min-h-[calc(100svh-4.3rem)] flex flex-col justify-center py-20">
+    <section id="categories" class="landing-section border-y border-black/5 bg-paper">
       <div class="mx-auto max-w-6xl px-5 text-center">
         <h2 class="font-display text-3xl font-medium tracking-tight sm:text-5xl">Explore By Category</h2>
         <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-neutral-500 sm:text-base">Pick a genre and see what your neighbours are sharing.</p>
@@ -310,91 +318,115 @@ const join = () => {
       </div>
     </section>
 
-    <!-- How It Works: Wavy Path with Smaller Custom-Colored Cards -->
-    <section id="how" class="relative mx-auto max-w-7xl scroll-mt-20 px-5 min-h-[calc(100svh-4.3rem)] flex flex-col justify-center py-24 overflow-hidden bg-brand-soft/20">
-      
-      <!-- Section Heading -->
-      <div class="text-center relative z-10 max-w-2xl mx-auto mb-20">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-soft text-brand text-xs font-semibold uppercase tracking-wider mb-3">
-          Workflow
+    <!-- How it works: wave path with three steps -->
+    <section id="how" class="landing-section">
+      <div class="mx-auto w-full max-w-6xl px-5">
+        <div class="text-center">
+          <span class="inline-block rounded-full bg-brand-soft px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">Simple as 1-2-3</span>
+          <h2 class="mt-4 font-display text-3xl font-medium tracking-tight sm:text-5xl">How It Works</h2>
         </div>
-        <h2 class="font-display text-3xl font-bold tracking-tight text-ink sm:text-5xl">How It Works</h2>
-        <p class="mt-4 text-neutral-600 text-sm sm:text-base">Follow these simple steps to start sharing and reading books with people around you.</p>
-      </div>
 
-      <!-- Wavy Container -->
-      <div class="relative max-w-5xl mx-auto w-full z-10">
-        
-        <!-- Background Visible Wavy Line for Desktop -->
-        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 hidden lg:block pointer-events-none px-6">
-          <svg class="w-full text-brand drop-shadow-sm" height="140" viewBox="0 0 1000 140" fill="none" preserveAspectRatio="none">
-            <path d="M 50 95 Q 280 15, 500 95 T 950 45" stroke="currentColor" stroke-width="4" stroke-dasharray="10 10" stroke-linecap="round" />
+        <!-- Desktop: winding path -->
+        <div v-reveal class="relative mx-auto mt-8 hidden aspect-[1000/420] w-full max-w-4xl lg:block">
+          <svg class="absolute inset-0 h-full w-full" viewBox="0 0 1000 420" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="how-grad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#8B3F4E" stop-opacity=".25" />
+                <stop offset=".2" stop-color="#8B3F4E" />
+                <stop offset=".85" stop-color="#8B3F4E" />
+                <stop offset="1" stop-color="#8B3F4E" stop-opacity=".25" />
+              </linearGradient>
+            </defs>
+            <path d="M0,225 C70,255 110,275 170,272 S380,105 500,105 S630,265 720,260 S790,215 830,215 S940,190 1000,200" stroke="#1F2430" stroke-opacity=".06" stroke-width="10" stroke-linecap="round" />
+            <path class="how-path" pathLength="1" d="M0,215 C70,245 110,265 170,262 S380,95 500,95 S630,255 720,250 S790,205 830,205 S940,180 1000,190" stroke="url(#how-grad)" stroke-width="3" stroke-linecap="round" />
           </svg>
-        </div>
 
-        <!-- Cards positioned directly on top of the wavy path (Smaller & Theme-matched Soft Tint Background) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 items-center">
-          
-          <div v-for="(item, index) in processSteps" :key="item.step" 
-               class="process-card group relative bg-white/95 backdrop-blur-sm rounded-2xl p-5 border border-brand/20 shadow-xl shadow-brand/10 transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-brand flex flex-col items-center text-center max-w-xs mx-auto w-full"
-               :class="{
-                 'lg:-translate-y-6': index === 0,
-                 'lg:translate-y-14': index === 1,
-                 'lg:-translate-y-4': index === 2
-               }">
-            
-            <!-- Watermark Step Number -->
-            <span class="absolute right-3 top-2 font-display text-5xl font-extrabold text-brand/10 group-hover:text-brand/20 transition-colors duration-300 select-none pointer-events-none" aria-hidden="true">
-              {{ item.step }}
-            </span>
-
-            <!-- Compact Icon Badge -->
-            <div class="relative mb-4">
-              <div class="absolute inset-0 rounded-xl bg-brand/30 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div class="relative flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft border border-brand/30 text-brand shadow-inner transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
-                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path :d="item.icon" />
-                </svg>
-              </div>
+          <template v-for="(s, i) in journey" :key="s.n">
+            <span aria-hidden="true" class="pointer-events-none absolute select-none font-display text-[8rem] font-bold leading-none text-brand/[0.07]" :style="posOf(s.big)">{{ s.n }}</span>
+            <div class="absolute z-10 -translate-x-1/2 -translate-y-1/2" :style="posOf(s.node)">
+              <span class="how-node how-hex relative flex h-[4.5rem] w-[4.5rem] items-center justify-center" :style="{ '--n': i }">
+                <span class="hex absolute inset-0 bg-brand/15"></span>
+                <span class="hex absolute inset-[5px] flex items-center justify-center bg-white text-brand">
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="s.d" /></svg>
+                </span>
+              </span>
             </div>
-
-            <!-- Content -->
-            <h3 class="font-display text-base font-semibold text-ink group-hover:text-brand transition-colors duration-300">
-              {{ item.title }}
-            </h3>
-            <p class="mt-1.5 text-xs leading-relaxed text-neutral-600">
-              {{ item.description }}
-            </p>
-
-            <!-- Bottom Indicator Line -->
-            <div class="mt-4 w-6 h-1 rounded-full bg-brand/30 group-hover:w-10 group-hover:bg-brand transition-all duration-300"></div>
-
-          </div>
-
+            <div class="how-text absolute z-10 text-center" :style="{ ...boxOf(s.box), '--n': i }">
+              <h3 class="font-display text-lg font-semibold">{{ s.title }}</h3>
+              <p class="mt-1.5 text-sm leading-relaxed text-neutral-500">{{ s.text }}</p>
+            </div>
+          </template>
         </div>
-      </div>
 
-    </section>
+        <!-- Mobile / tablet: vertical path -->
+        <!-- <ol class="relative mx-auto mt-8 max-w-md space-y-8 lg:hidden">
+          <span aria-hidden="true" class="absolute bottom-10 left-9 top-10 w-px -translate-x-1/2 border-l-2 border-dashed border-brand/25"></span>
+          <li v-for="s in journey" :key="s.n" class="relative flex items-start gap-5">
+            <span class="how-hex relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center">
+              <span class="hex absolute inset-0 bg-brand/15"></span>
+              <span class="hex absolute inset-[5px] flex items-center justify-center bg-white text-brand">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="s.d" /></svg>
+              </span>
+            </span>
+            <div class="relative min-w-0 pt-1">
+              <span aria-hidden="true" class="pointer-events-none absolute -top-3 right-0 select-none font-display text-7xl font-bold leading-none text-brand/[0.07]">{{ s.n }}</span>
+              <h3 class="relative font-display text-lg font-semibold">{{ s.title }}</h3>
+              <p class="relative mt-1 text-sm leading-relaxed text-neutral-500">{{ s.text }}</p>
+            </div>
+          </li>
+        </ol>
 
-    <!-- Testimonials: full screen spacing -->
-    <section class="overflow-hidden border-t border-black/5 bg-paper min-h-[calc(100svh-4.3rem)] flex flex-col justify-center py-20">
-      <div class="mx-auto max-w-6xl px-5">
-        <h2 v-reveal class="text-center font-display text-3xl font-medium tracking-tight sm:text-5xl">What Our Readers Say</h2>
-        <div class="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2">
-          <figure v-for="(t, i) in testimonials" :key="t.name" v-reveal="140 + i * 160" :style="{ '--i': i }">
-            <div class="t-card relative h-full overflow-hidden rounded-2xl border border-black/5 bg-white p-6 transition-shadow duration-300 hover:shadow-xl">
-              <svg class="pointer-events-none absolute -right-1 -top-2 h-24 w-24 text-brand/[0.07]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.6 4C5.9 5.6 3 8.9 3 13.2V20h7.4v-7.2H6.6c.1-2.5 1.5-4.3 4-5.6L9.6 4Zm10 0c-3.7 1.6-6.6 4.9-6.6 9.2V20h7.4v-7.2h-3.8c.1-2.5 1.5-4.3 4-5.6L19.6 4Z" /></svg>
-              <div class="relative flex items-center gap-3">
-                <span class="t-avatar flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand font-display text-sm font-semibold text-white">{{ initials(t.name) }}</span>
-                <figcaption class="min-w-0">
-                  <p class="truncate text-sm font-medium">{{ t.name }}</p>
-                  <p class="truncate text-xs text-neutral-500">{{ t.role }}</p>
-                </figcaption>
-                <span class="ml-auto flex shrink-0 gap-0.5 text-[#B07D3A]" role="img" aria-label="5 out of 5 stars">
-                  <svg v-for="n in 5" :key="n" class="t-star h-4 w-4" :style="{ '--s': n }" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+        <!-- Perks -->
+        <!-- <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div v-for="p in perks" :key="p.title" class="flex items-start gap-3 rounded-2xl border border-black/5 bg-white p-4 transition-shadow hover:shadow-lg">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+              <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="p.d" /></svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-medium">{{ p.title }}</h3>
+              <p class="mt-0.5 text-xs leading-relaxed text-neutral-500">{{ p.text }}</p>
+            </div>
+          </div>
+        </div>-->
+      </div> 
+    </section>  
+
+    <!-- Reader stories -->
+    <section id="readers" class="landing-section overflow-hidden border-t border-black/5 bg-paper">
+      <div class="mx-auto w-full max-w-6xl px-5">
+        <div class="text-center">
+          <span v-reveal class="inline-block rounded-full bg-brand-soft px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">Reader stories</span>
+          <h2 v-reveal="80" class="mt-4 font-display text-3xl font-medium tracking-tight sm:text-5xl">What Our Readers Say</h2>
+          <p v-reveal="160" class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-neutral-500">Real swaps, donations and loans between neighbours who love books.</p>
+          <dl v-reveal="240" class="mx-auto mt-6 inline-flex divide-x divide-black/10 rounded-2xl border border-black/5 bg-white py-3 shadow-sm">
+            <div v-for="[v, l] in readerStats" :key="l" class="px-5 text-center sm:px-8">
+              <dd class="font-display text-xl font-semibold text-brand sm:text-2xl">{{ v }}</dd>
+              <dt class="text-[11px] text-neutral-500 sm:text-xs">{{ l }}</dt>
+            </div>
+          </dl>
+        </div>
+
+        <div class="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <figure v-for="(t, i) in testimonials" :key="t.id || t.name" v-reveal="120 + i * 120" :style="{ '--i': i }" :class="i === 0 ? 'md:col-span-2 lg:col-span-1 lg:row-span-2' : ''">
+            <div class="t-card relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 transition-shadow duration-300 hover:shadow-xl" :class="i === 0 ? 'justify-between border-brand-dark bg-brand text-white' : 'border-black/5 bg-white'">
+              <svg class="pointer-events-none absolute -right-1 -top-2 h-24 w-24" :class="i === 0 ? 'text-white/10' : 'text-brand/[0.07]'" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.6 4C5.9 5.6 3 8.9 3 13.2V20h7.4v-7.2H6.6c.1-2.5 1.5-4.3 4-5.6L9.6 4Zm10 0c-3.7 1.6-6.6 4.9-6.6 9.2V20h7.4v-7.2h-3.8c.1-2.5 1.5-4.3 4-5.6L19.6 4Z" /></svg>
+              <div class="relative">
+                <span class="flex gap-0.5" :class="i === 0 ? 'text-[#F3C77E]' : 'text-[#B07D3A]'" role="img" :aria-label="`${t.rating || 5} out of 5 stars`">
+                  <svg v-for="n in 5" :key="n" class="t-star h-4 w-4" :class="n <= (t.rating || 5) ? '' : 'opacity-25'" :style="{ '--s': n }" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                </span>
+                <blockquote class="mt-4 leading-relaxed" :class="i === 0 ? 'font-display text-xl sm:text-2xl' : 'text-sm text-neutral-700'">{{ t.text ?? t.content }}</blockquote>
+                <span v-if="t.book" class="mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium" :class="i === 0 ? 'bg-white/15 text-white' : 'bg-brand-soft text-brand'">
+                  <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
+                  {{ t.book }}
                 </span>
               </div>
-              <blockquote class="relative mt-4 text-sm leading-relaxed text-neutral-700">{{ t.text ?? t.content }}</blockquote>
+              <figcaption class="relative mt-5 flex items-center gap-3 border-t pt-4" :class="i === 0 ? 'border-white/15' : 'border-black/5'">
+                <span class="t-avatar flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-display text-sm font-semibold" :class="i === 0 ? 'bg-white text-brand' : 'bg-brand text-white'">{{ initials(t.name) }}</span>
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-medium">{{ t.name }}</span>
+                  <span class="block truncate text-xs" :class="i === 0 ? 'text-white/70' : 'text-neutral-500'">{{ t.role }}<template v-if="t.city"> · {{ t.city }}</template></span>
+                </span>
+              </figcaption>
             </div>
           </figure>
         </div>
@@ -482,6 +514,22 @@ const join = () => {
 <style>
 html { scroll-behavior: smooth; }
 
+/* Sticky header = 4.3rem + 1px border. Every section fills the screen below it and stops exactly under it,
+   so jumping to a section from the menu never shows a piece of the neighbouring section. */
+:root { --hdr: calc(4.3rem + 1px); }
+.landing-hero { height: calc(100svh - var(--hdr)); min-height: 34rem; scroll-margin-top: var(--hdr); }
+.landing-section { min-height: calc(100svh - var(--hdr)); scroll-margin-top: var(--hdr); padding-block: clamp(3rem, 9vh, 6rem); display: flex; flex-direction: column; justify-content: center; }
+
+.hex { clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+.how-hex { filter: drop-shadow(0 12px 12px rgba(139, 63, 78, .28)); }
+.how-path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.reveal.is-in .how-path { animation: how-draw 2.2s cubic-bezier(.4, 0, .2, 1) .3s forwards; }
+@keyframes how-draw { to { stroke-dashoffset: 0; } }
+.reveal.is-in .how-node { animation: avatar-pop .6s cubic-bezier(.2, .9, .3, 1.3) both; animation-delay: calc(.5s + var(--n, 0) * .55s); }
+.reveal.is-in .how-text { animation: how-rise .7s ease both; animation-delay: calc(.7s + var(--n, 0) * .55s); }
+@keyframes how-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.reveal:not(.is-in) .how-text, .reveal:not(.is-in) .how-node { opacity: 0; }
+
 .hero-track { will-change: transform; animation-timing-function: linear; animation-iteration-count: infinite; }
 .hero-up { animation-name: hero-up; }
 .hero-down { animation-name: hero-down; }
@@ -547,6 +595,8 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .how-path { stroke-dashoffset: 0; animation: none !important; }
+  .reveal.is-in .how-node, .reveal.is-in .how-text { animation: none; }
   .hero-track, .lib-track, .lib-bubble, .cat-track, .reveal.is-in .t-card, .reveal.is-in .t-star, .reveal.is-in .t-avatar { animation: none; }
   .reveal, .reveal:not(.is-in) .t-star { opacity: 1; transform: none; transition: none; }
   .lib-card, .cat-tile, .lib-modal-enter-active, .lib-modal-leave-active, .lib-modal-enter-active .lib-modal-panel, .lib-modal-leave-active .lib-modal-panel { transition: none; }

@@ -31,8 +31,13 @@ export async function sendExchangeRequest(bookId, message = '') {
   await wait(500); return { data: { id: Date.now(), book_id: bookId, status: 'pending' } }
 }
 
-export async function toggleWishlist(bookId) {
-  if (!USE_MOCK) return (await http.post('/wishlists', { book_id: bookId })).data
+// isWished = true hole wishlist theke remove (DELETE), false hole add (POST)
+export async function toggleWishlist(bookId, isWished = false) {
+  if (!USE_MOCK) {
+    return isWished
+      ? (await http.delete(`/wishlist/${bookId}`)).data
+      : (await http.post('/wishlist', { book_id: bookId })).data
+  }
   await wait(200); return { data: { book_id: bookId } }
 }
 
@@ -42,11 +47,11 @@ export async function getNotifications() {
 }
 
 export async function markNotificationsRead() {
-  if (!USE_MOCK) return (await http.post('/notifications/read-all')).data
+  if (!USE_MOCK) return (await http.patch('/notifications/read-all')).data
   await wait(100); return { data: true }
 }
 
 export async function getMe() {
-  if (!USE_MOCK) return (await http.get('/user')).data
+  if (!USE_MOCK) return { data: (await http.get('/me')).data } // backend user object ta shorasori dey
   await wait(100); return { data: auth.user ? { ...me, ...auth.user } : me }
 }

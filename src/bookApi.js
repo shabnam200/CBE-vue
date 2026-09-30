@@ -15,7 +15,7 @@ export { http }
  * ------------------------------------------------------------------ */
 export const CONDITIONS = [
   { value: 'new', label: 'New' },
-  { value: 'like_new', label: 'Like new' },
+  { value: 'poor', label: 'Poor' },
   { value: 'good', label: 'Good' },
   { value: 'fair', label: 'Fair' },
 ]
@@ -123,7 +123,7 @@ export async function getBook(id) {
     return { ...mockBooks.find((b) => b.id === id), available_copies: 1 }
   }
   const p = (await http.get(`/books/${id}`)).data
-  return normalizeBook(p?.data ?? p?.book ?? p)
+  return normalizeBook({ ...(p?.data ?? p?.book ?? p), available_copies: p?.available_copies }) // backend { book, available_copies }
 }
 
 // GET /api/matches

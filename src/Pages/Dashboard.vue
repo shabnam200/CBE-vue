@@ -123,7 +123,7 @@ async function send() {
   }
 }
 async function wish(b) {
-  try { await toggleWishlist(b.id) } catch { return say('Could not update your wishlist.') }
+  try { await toggleWishlist(b.id, wished.value.has(b.id)) } catch { return say('Could not update your wishlist.') }
   wished.value.has(b.id) ? wished.value.delete(b.id) : wished.value.add(b.id)
   wished.value = new Set(wished.value)
 }

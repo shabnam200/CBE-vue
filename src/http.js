@@ -5,7 +5,7 @@ import { API_URL, TOKEN_KEY } from './config'
 export const http = axios.create({
   baseURL: API_URL,
   headers: { Accept: 'application/json' },
-  withCredentials: true, // session cookie login (Sanctum SPA) er jonno
+  withCredentials: false, // Bearer token use hocche, cookie lagbe na (true dile CORS error)
 })
 
 http.interceptors.request.use((config) => {

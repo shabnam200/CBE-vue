@@ -43,7 +43,7 @@ export async function logout() {
 
 export async function fetchUser() {
   if (USE_MOCK) return null
-  const p = (await http.get('/user')).data                                // GET /api/user
+  const p = (await http.get('/me')).data                                  // GET /api/me
   return p.data ?? p.user ?? p
 }
 
@@ -59,7 +59,7 @@ export async function resetPassword(payload) {
 
 export async function updateProfile(payload) {
   if (USE_MOCK) { await wait(); return { user: { ...payload } } }
-  const p = (await http.put('/user/profile', payload)).data               // PUT /api/user/profile
+  const p = (await http.post('/profile', payload)).data                   // POST /api/profile
   return { user: p.user ?? p.data ?? p }
 }
 

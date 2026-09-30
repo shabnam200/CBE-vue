@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import Toast from '@/Components/Toast.vue'
@@ -70,7 +70,25 @@ async function send() {
   }
 }
 
+// Notun message ashlo kina 8 sec por por check (list + khola thread)
+let poll = null
+async function pollNow() {
+  if (document.visibilityState !== 'visible') return
+  try {
+    const fresh = (await getConversations()).data
+    fresh.forEach((f) => { if (f.id === activeId.value) f.unread = 0 })
+    convos.value = fresh
+    fresh.forEach((f) => app.setConvoUnread(f.id, f.unread))
+    if (activeId.value) {
+      const latest = (await getMessages(activeId.value)).data
+      if (latest.length !== messages.value.length) { messages.value = latest; toBottom() }
+    }
+  } catch { /* ignore */ }
+}
+onBeforeUnmount(() => clearInterval(poll))
+
 onMounted(async () => {
+  poll = setInterval(pollNow, 8000)
   app.markMessagesSeen()
   try {
     convos.value = (await getConversations()).data

@@ -2,11 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { auth } from '../stores/auth'
 import { USE_MOCK } from '../config'
 
-// meta.auth  = login lagbe        meta.admin = admin role lagbe
-// Mock mode e guard off, jate login chhara e sob page dekha jay (agerr moto).
 const routes = [
   { path: '/', component: () => import('../Pages/Landing.vue') },
-  { path: '/dashboard', component: () => import('../Pages/Dashboard.vue') },
+  { path: '/dashboard', component: () => import('../Pages/Dashboard.vue'), meta: { auth: true } },
+  { path: '/wishlist', component: () => import('../Pages/Wishlist.vue'), meta: { auth: true } },
   { path: '/my-books', component: () => import('../Pages/MyBooks.vue'), meta: { auth: true } },
   { path: '/admin', component: () => import('../Pages/Admin/Dashboard.vue'), meta: { auth: true, admin: true } },
   { path: '/profile', component: () => import('../Pages/Profile/Edit.vue'), meta: { auth: true } },
@@ -18,11 +17,9 @@ const routes = [
 
   { path: '/logout', component: () => import('../Pages/Auth/Login.vue'), beforeEnter: async () => { await auth.logout(); return '/' } },
 
-  // Sidebar e link ache kintu page ekhono banano hoyni
-  { path: '/wishlist', component: () => import('../Pages/ComingSoon.vue'), props: { title: 'Wishlist' } },
-  { path: '/requests', component: () => import('../Pages/ComingSoon.vue'), props: { title: 'Requests' } },
-  { path: '/messages', component: () => import('../Pages/ComingSoon.vue'), props: { title: 'Messages' } },
-  { path: '/notifications', component: () => import('../Pages/ComingSoon.vue'), props: { title: 'Notifications' } },
+  { path: '/requests', component: () => import('../Pages/Requests.vue'), meta: { auth: true } },
+  { path: '/messages', component: () => import('../Pages/Messages.vue'), meta: { auth: true } },
+  { path: '/notifications', component: () => import('../Pages/Notifications.vue'), meta: { auth: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

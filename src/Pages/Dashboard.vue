@@ -132,7 +132,7 @@ async function wish(b) {
 <template>
   <Head title="Dashboard" />
   <div class="flex min-h-screen bg-paper font-sans text-ink">
-    <!-- Reusable Sidebar Component -->
+    <!-- Reusable Sidebar Component with Home Active -->
     <Sidebar currentRoute="Home" />
 
     <main class="flex min-w-0 flex-1 flex-col gap-5 p-4 pb-24 md:pb-4">
@@ -169,7 +169,7 @@ async function wish(b) {
         <span class="rounded-lg bg-brand-soft px-3 py-2 text-sm font-medium text-brand">{{ me.name }}</span>
       </div>
 
-      <!-- Search results / All books (GET /api/books) -->
+      <!-- Search results / All books -->
       <section class="rounded-2xl border border-black/5 bg-white p-5" :class="filtering ? 'order-first' : 'order-last'">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="font-display text-lg font-semibold text-brand">
@@ -220,7 +220,7 @@ async function wish(b) {
         </div>
       </section>
 
-      <!-- Top Books Section (GET /api/books/top) -->
+      <!-- Top Books Section -->
       <section v-show="!filtering" class="rounded-2xl border border-black/5 bg-white p-5">
         <div class="flex items-center justify-between">
           <h2 class="font-display text-lg font-semibold text-brand">Top Books</h2>
@@ -249,7 +249,7 @@ async function wish(b) {
         </div>
       </section>
 
-      <!-- Match suggestions (GET /api/matches) -->
+      <!-- Match suggestions -->
       <section v-show="!filtering" class="rounded-2xl border border-black/5 bg-white p-5">
         <div class="flex items-center justify-between">
           <h2 class="font-display text-lg font-semibold text-brand">Matches for your wishlist</h2>

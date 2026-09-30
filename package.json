@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@inertiajs/vue3": "^3.7.1",
     "axios": "^1.11.0",
     "vue": "^3.4.0",
     "vue-router": "^4.4.0"

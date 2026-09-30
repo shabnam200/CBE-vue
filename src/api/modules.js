@@ -65,6 +65,7 @@ function mapNotification(n) {
   else if (t.includes('was accepted')) { type = 'accepted'; link = '/requests' }
   else if (t.includes('was rejected') || t.includes('was cancelled')) { type = 'rejected'; link = '/requests' }
   else if (t.includes('was completed')) { type = 'accepted'; link = '/requests' }
+  else if (t.includes('message')) { type = 'message'; link = '/messages' }
   else if (t.includes('rated you')) { type = 'review'; link = '/profile' }
   return { id: n.id, type, message: n.message, is_read: !!n.is_read, created_at: n.created_at, link }
 }
@@ -347,4 +348,26 @@ export async function getProfileSummary() {
   // ---- MOCK ----
   await wait()
   return { data: { stats: { ...profileStats }, reviews: clone(reviews) } }
+}
+
+/* ------------------------------------------------------------------ *
+ * AVATAR (profile photo)
+ * ------------------------------------------------------------------ */
+// POST /api/user/avatar  (FormData: avatar)  ->  { avatar_url }   <-- backend e ei route ta add korte hobe
+export async function uploadAvatar(file) {
+  if (!USE_MOCK) {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    const p = (await http.post('/user/avatar', fd)).data
+    return { avatar_url: p.avatar_url ?? p.data?.avatar_url ?? p.user?.avatar_url ?? null }
+  }
+  await wait(400)
+  return { avatar_url: null } // mock: local e save hoy (stores/app.js)
+}
+
+// DELETE /api/user/avatar
+export async function removeAvatarApi() {
+  if (!USE_MOCK) return (await http.delete('/user/avatar')).data
+  await wait(200)
+  return { data: true }
 }

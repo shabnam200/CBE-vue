@@ -265,11 +265,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <p v-if="USE_MOCK" class="mb-5 inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">Showing dummy data. Changes reset when you reload.</p>
 
       <!-- ================= OVERVIEW ================= -->
-      <section v-show="tab === 'overview'">
+      <section v-show="tab === 'overview'" :class="tab === 'overview' ? 'animate-fade-up' : ''">
         <h1 class="font-display text-3xl font-semibold tracking-tight">Overview</h1>
         <p class="mt-1 text-sm text-neutral-500">How the community is doing right now.</p>
 
-        <div class="mt-6 rounded-xl border border-black/5 bg-white">
+        <div class="mt-6 rounded-xl border border-black/5 bg-white transition-shadow hover:shadow-md">
           <p v-if="overview.loading" class="p-5 text-sm text-neutral-500">Loading numbers…</p>
           <p v-else-if="overview.error" class="p-5 text-sm text-red-700">{{ overview.error }} <button class="ml-2 font-semibold underline" @click="loadOverview">Try again</button></p>
           <div v-else-if="overview.stats" class="grid grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-black/5">
@@ -330,7 +330,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </section>
 
       <!-- ================= BOOKS ================= -->
-      <section v-show="tab === 'books'">
+      <section v-show="tab === 'books'" :class="tab === 'books' ? 'animate-fade-up' : ''">
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 class="font-display text-3xl font-semibold tracking-tight">Books</h1>
@@ -405,7 +405,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </section>
 
       <!-- ================= MEMBERS ================= -->
-      <section v-show="tab === 'users'">
+      <section v-show="tab === 'users'" :class="tab === 'users' ? 'animate-fade-up' : ''">
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 class="font-display text-3xl font-semibold tracking-tight">Members</h1>

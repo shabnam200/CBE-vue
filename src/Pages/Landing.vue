@@ -12,6 +12,18 @@ import { getBooks, getBook } from '../bookApi'
 
 const router = useRouter()
 const menuOpen = ref(false)
+const authModalOpen = ref(false)
+const authMode = ref('login')
+const authLoading = ref(false)
+const authError = ref('')
+const fieldErrors = ref({})
+const pendingGenre = ref('')
+const loggingOut = ref(false)
+const loginForm = ref({ email: '', password: '' })
+const registerForm = ref({ name: '', email: '', city: '', password: '', password_confirmation: '', profile_photo: null })
+const authCloseBtn = ref(null)
+const authDialog = ref(null)
+let authLastFocus = null
 const catalog = ref([...mockBooks]) // mock first, replaced by API books when they load
 const email = ref('')
 const isAuthenticated = computed(() => Boolean(auth.user))
@@ -23,11 +35,67 @@ const badge = { exchange: 'Exchange', donate: 'Free', lend: 'Lend' }
 const availabilityLabel = { exchange: 'Exchange', donate: 'Donate (free)', lend: 'Lend' }
 const cta = { exchange: 'Request exchange', donate: 'Request this book', lend: 'Request to borrow' }
 
-// Button navigation (vue-router). Real mode e /dashboard e login na thakle guard nijei /login e pathabe.
-const goToLogin = () => { menuOpen.value = false; router.push('/login') }
-const goToRegister = () => { menuOpen.value = false; router.push('/register') }
+const openAuthModal = (mode) => {
+  authLastFocus = document.activeElement
+  menuOpen.value = false
+  authMode.value = mode
+  authError.value = ''
+  fieldErrors.value = {}
+  authModalOpen.value = true
+  nextTick(() => authCloseBtn.value?.focus())
+}
+const goToLogin = () => openAuthModal('login')
+const goToRegister = () => openAuthModal('register')
+const switchAuthMode = (mode) => {
+  authMode.value = mode
+  authError.value = ''
+  fieldErrors.value = {}
+}
+const closeAuthModal = () => {
+  authModalOpen.value = false
+  pendingGenre.value = ''
+  nextTick(() => { authLastFocus?.focus?.(); authLastFocus = null })
+}
 const goToDashboard = () => router.push('/dashboard')
 const goToExplore = () => router.push('/dashboard')
+async function handleLogout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await auth.logout()
+    menuOpen.value = false
+    await router.push('/')
+  } finally {
+    loggingOut.value = false
+  }
+}
+
+const handleProfilePhoto = (event) => {
+  registerForm.value.profile_photo = event.target.files?.[0] || null
+}
+
+async function submitAuth(request) {
+  authLoading.value = true
+  authError.value = ''
+  fieldErrors.value = {}
+  try {
+    await request()
+    const genre = pendingGenre.value
+    const destination = auth.user?.role === 'admin'
+      ? '/admin'
+      : genre ? { path: '/dashboard', query: { genre } } : '/dashboard'
+    closeAuthModal()
+    await router.push(destination)
+  } catch (error) {
+    fieldErrors.value = error?.response?.data?.errors || error?.errors || {}
+    authError.value = error?.response?.data?.message || error?.message || 'Could not complete your request. Please try again.'
+  } finally {
+    authLoading.value = false
+  }
+}
+
+const handleLogin = () => submitAuth(() => auth.login(loginForm.value))
+const handleRegister = () => submitAuth(() => auth.register(registerForm.value))
 
 /* ---------- Hero: every column of covers scrolls forever, neighbouring columns go opposite ways ---------- */
 const HERO_COLS = 9
@@ -65,6 +133,10 @@ const dialogEl = ref(null)
 const closeBtn = ref(null)
 let lastFocus = null
 
+watch([authModalOpen, selectedBook], ([authOpen, book]) => {
+  document.body.style.overflow = authOpen || book ? 'hidden' : ''
+})
+
 const filled = (o) => Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v != null && v !== ''))
 const prettyCondition = (c) => (c ? String(c).replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase()) : '')
 
@@ -92,7 +164,19 @@ function trapFocus(e) {
   if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
 }
-const onKey = (e) => { if (e.key === 'Escape' && selectedBook.value) closeBook() }
+function trapAuthFocus(e) {
+  const nodes = authDialog.value?.querySelectorAll('button:not([disabled]), input:not([disabled])')
+  if (!nodes?.length) return
+  const first = nodes[0]
+  const last = nodes[nodes.length - 1]
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+}
+const onKey = (e) => {
+  if (e.key !== 'Escape') return
+  if (authModalOpen.value) closeAuthModal()
+  else if (selectedBook.value) closeBook()
+}
 
 const bookFacts = computed(() => {
   const b = selectedBook.value
@@ -110,11 +194,15 @@ const bookFacts = computed(() => {
     ['Listed', listed && !Number.isNaN(listed.getTime()) ? listed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''],
   ].filter(([, v]) => v != null && v !== '')
 })
-const requestHref = computed(() => {
-  const b = selectedBook.value
-  if (!b) return '/login'
-  return isAuthenticated.value ? '/dashboard' : `/login?book=${b.id}&action=${b.availability_type}`
-})
+function requestBook() {
+  if (!isAuthenticated.value) {
+    closeBook()
+    openAuthModal('login')
+    return
+  }
+  closeBook()
+  router.push('/dashboard')
+}
 
 /* ---------- Explore by category: staggered tiles that glide left and right ---------- */
 const cats = computed(() => {
@@ -123,7 +211,14 @@ const cats = computed(() => {
   if (!names.length) names = [...new Set(list.map((b) => b.genre).filter(Boolean))] // API genres differ from mock
   return names.slice(0, 8).map((c) => ({ name: c, cover: list.find((b) => b.genre === c), count: list.filter((b) => b.genre === c).length }))
 })
-const categoryHref = (name) => `${isAuthenticated.value ? '/dashboard' : '/login'}?genre=${encodeURIComponent(name)}`
+function openCategory(name) {
+  if (!isAuthenticated.value) {
+    pendingGenre.value = name
+    openAuthModal('login')
+    return
+  }
+  router.push({ path: '/dashboard', query: { genre: name } })
+}
 const catOffsets = [96, 48, 0, 44, 84, 24, 64, 12] // how far each tile hangs from the top (the staggered look)
 const catWidths = ['70%', '80%', '94%', '80%', '70%', '86%', '74%', '82%'] // tile width as a share of its column
 const catTints = ['#F6ECEE', '#E6EFEA', '#E4E9F5', '#FBF1DE', '#EDE8F3', '#F3EBE4', '#E8F1F5', '#F5F0E1']
@@ -228,7 +323,10 @@ const join = () => {
             <button type="button" @click="goToLogin" class="hidden text-neutral-700 transition-colors hover:text-brand sm:inline">Log in</button>
             <button type="button" @click="goToRegister" class="rounded-lg bg-brand px-4 py-2 text-white shadow-sm transition-colors hover:bg-brand-dark">Join free</button>
           </template>
-          <button v-else type="button" @click="goToDashboard" class="rounded-lg bg-brand px-4 py-2 text-white shadow-sm transition-colors hover:bg-brand-dark">Dashboard</button>
+          <template v-else>
+            <button type="button" @click="goToDashboard" class="rounded-lg bg-brand px-4 py-2 text-white shadow-sm transition-colors hover:bg-brand-dark">Dashboard</button>
+            <button type="button" @click="handleLogout" :disabled="loggingOut" class="rounded-lg border border-black/15 px-4 py-2 text-neutral-700 transition-colors hover:border-red-300 hover:text-red-700 disabled:opacity-60">{{ loggingOut ? 'Logging out...' : 'Logout' }}</button>
+          </template>
           <button class="rounded-lg p-2 text-neutral-700 hover:bg-brand-soft md:hidden" :aria-expanded="menuOpen" aria-label="Menu" @click="menuOpen = !menuOpen">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path v-if="!menuOpen" d="M4 7h16M4 12h16M4 17h16" /><path v-else d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
@@ -237,6 +335,7 @@ const join = () => {
       <div v-if="menuOpen" class="border-t border-black/5 bg-white px-5 py-3 md:hidden">
         <a v-for="[t, h] in navLinks" :key="t" :href="h" class="block rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-brand-soft hover:text-brand" @click="menuOpen = false">{{ t }}</a>
         <button v-if="!isAuthenticated" type="button" @click="goToLogin" class="block w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-700 hover:bg-brand-soft hover:text-brand sm:hidden">Log in</button>
+        <button v-if="isAuthenticated" type="button" @click="handleLogout" :disabled="loggingOut" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-neutral-700 hover:bg-red-50 hover:text-red-700 disabled:opacity-60">{{ loggingOut ? 'Logging out...' : 'Logout' }}</button>
       </div>
     </header>
 
@@ -272,7 +371,7 @@ const join = () => {
     </section>
 
     <!-- Our Library: full screen spacing -->
-    <section id="library" class="landing-section">
+    <section v-reveal id="library" class="landing-section">
       <div class="mx-auto max-w-6xl px-5 text-center">
         <h2 class="leading-[1.05] tracking-tight">
           <!-- <span class="block font-sans text-2xl font-normal sm:text-4xl">Our Library</span> -->
@@ -298,7 +397,7 @@ const join = () => {
     </section>
 
     <!-- Explore by category: full screen spacing -->
-    <section id="categories" class="landing-section border-y border-black/5 bg-paper">
+    <section v-reveal id="categories" class="landing-section border-y border-black/5 bg-paper">
       <div class="mx-auto max-w-6xl px-5 text-center">
         <h2 class="font-display text-3xl font-medium tracking-tight sm:text-5xl">Explore By Category</h2>
         <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-neutral-500 sm:text-base">Pick a genre and see what your neighbours are sharing.</p>
@@ -306,20 +405,20 @@ const join = () => {
       <div v-if="cats.length" ref="catViewport" class="cat-viewport mx-auto mt-10 max-w-6xl" role="region" aria-label="Book categories">
         <ul ref="catTrack" class="cat-track" :style="catStyle">
           <li v-for="(c, i) in cats" :key="c.name" class="cat-col">
-            <Link :href="categoryHref(c.name)" class="group flex h-full flex-col items-center focus-visible:outline-none" :aria-label="`${c.name}, ${c.count} ${c.count === 1 ? 'book' : 'books'}`">
+            <a href="#" @click.prevent="openCategory(c.name)" class="group flex h-full flex-col items-center focus-visible:outline-none" :aria-label="`${c.name}, ${c.count} ${c.count === 1 ? 'book' : 'books'}`">
               <div class="cat-tile" :style="{ width: catWidths[i % catWidths.length], marginTop: catOffsets[i % catOffsets.length] + 'px', background: catTints[i % catTints.length] }">
                 <div class="cat-cover"><BookCover :book="c.cover" /></div>
               </div>
               <span class="cat-line" aria-hidden="true"></span>
               <span class="cat-pill">{{ c.name }}</span>
-            </Link>
+            </a>
           </li>
         </ul>
       </div>
     </section>
 
     <!-- How it works: wave path with three steps -->
-    <section id="how" class="landing-section">
+    <section v-reveal id="how" class="landing-section">
       <div class="mx-auto w-full max-w-6xl px-5">
         <div class="text-center">
           <span class="inline-block rounded-full bg-brand-soft px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">Simple as 1-2-3</span>
@@ -392,7 +491,7 @@ const join = () => {
     </section>  
 
     <!-- Reader stories -->
-    <section id="readers" class="landing-section overflow-hidden border-t border-black/5 bg-paper">
+    <section v-reveal id="readers" class="landing-section overflow-hidden border-t border-black/5 bg-paper">
       <div class="mx-auto w-full max-w-6xl px-5">
         <div class="text-center">
           <span v-reveal class="inline-block rounded-full bg-brand-soft px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">Reader stories</span>
@@ -496,15 +595,94 @@ const join = () => {
               </dl>
               <p v-if="selectedBook.description" class="mt-4 text-sm leading-relaxed text-neutral-600">{{ selectedBook.description }}</p>
               <div class="mt-6 flex flex-wrap items-center gap-3">
-                <Link :href="requestHref" class="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2">
+                <button type="button" @click="requestBook" class="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-medium text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2">
                   {{ cta[selectedBook.availability_type] || 'Send request' }}
                   <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
-                </Link>
+                </button>
                 <button type="button" class="rounded-full border border-black/10 px-5 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40" @click="closeBook">Close</button>
               </div>
               <p v-if="!isAuthenticated" class="mt-3 text-xs text-neutral-500">You will be asked to log in or create a free account first.</p>
             </div>
           </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Login and registration popup -->
+    <Transition name="lib-modal">
+      <div v-if="authModalOpen" class="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-ink/60 p-4 backdrop-blur-sm" @click.self="closeAuthModal">
+        <div ref="authDialog" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" class="lib-modal-panel relative my-auto w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-8" :class="authMode === 'register' ? 'max-h-[92vh]' : 'max-h-[85vh]'" @keydown.tab="trapAuthFocus">
+          <button ref="authCloseBtn" type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40" aria-label="Close" @click="closeAuthModal">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+
+          <div class="pr-10">
+            <p class="text-xs font-semibold uppercase tracking-wider text-brand">Book Haven</p>
+            <h2 id="auth-dialog-title" class="mt-1 font-display text-2xl font-semibold text-ink">{{ authMode === 'login' ? 'Welcome back' : 'Create your account' }}</h2>
+            <p class="mt-1 text-sm text-neutral-500">{{ authMode === 'login' ? 'Log in to continue sharing books.' : 'Join readers sharing books in their communities.' }}</p>
+          </div>
+
+          <div class="mt-6 grid grid-cols-2 border-b border-black/10">
+            <button type="button" class="border-b-2 pb-3 text-sm font-semibold transition-colors" :class="authMode === 'login' ? 'border-brand text-brand' : 'border-transparent text-neutral-400 hover:text-neutral-700'" @click="switchAuthMode('login')">Log in</button>
+            <button type="button" class="border-b-2 pb-3 text-sm font-semibold transition-colors" :class="authMode === 'register' ? 'border-brand text-brand' : 'border-transparent text-neutral-400 hover:text-neutral-700'" @click="switchAuthMode('register')">Register</button>
+          </div>
+
+          <form v-if="authMode === 'login'" class="mt-5 space-y-4" @submit.prevent="handleLogin">
+            <label class="block text-sm font-medium text-neutral-700">
+              Email address
+              <input v-model="loginForm.email" type="email" required autocomplete="email" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="you@example.com" />
+              <span v-if="fieldErrors.email" class="mt-1 block text-xs text-red-600">{{ fieldErrors.email[0] }}</span>
+            </label>
+            <label class="block text-sm font-medium text-neutral-700">
+              Password
+              <input v-model="loginForm.password" type="password" required autocomplete="current-password" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="Your password" />
+              <span v-if="fieldErrors.password" class="mt-1 block text-xs text-red-600">{{ fieldErrors.password[0] }}</span>
+            </label>
+            <p v-if="authError" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ authError }}</p>
+            <button type="submit" :disabled="authLoading" class="w-full rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-60">
+              {{ authLoading ? 'Logging in...' : 'Log in' }}
+            </button>
+          </form>
+
+          <form v-else class="mt-5 space-y-4" @submit.prevent="handleRegister">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <label class="block text-sm font-medium text-neutral-700">
+                Full name
+                <input v-model="registerForm.name" type="text" required autocomplete="name" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="Your full name" />
+                <span v-if="fieldErrors.name" class="mt-1 block text-xs text-red-600">{{ fieldErrors.name[0] }}</span>
+              </label>
+              <label class="block text-sm font-medium text-neutral-700">
+                Email address
+                <input v-model="registerForm.email" type="email" required autocomplete="email" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="you@example.com" />
+                <span v-if="fieldErrors.email" class="mt-1 block text-xs text-red-600">{{ fieldErrors.email[0] }}</span>
+              </label>
+              <label class="block text-sm font-medium text-neutral-700">
+                Location
+                <input v-model="registerForm.city" type="text" required autocomplete="address-level2" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="City or town" />
+                <span v-if="fieldErrors.city" class="mt-1 block text-xs text-red-600">{{ fieldErrors.city[0] }}</span>
+              </label>
+              <label class="block text-sm font-medium text-neutral-700">
+                Profile image <span class="font-normal text-neutral-400">(optional)</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" @change="handleProfilePhoto" class="mt-1.5 block w-full text-xs text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-brand-soft file:px-3 file:py-2 file:font-medium file:text-brand hover:file:bg-brand/15" />
+                <span v-if="registerForm.profile_photo" class="mt-1 block truncate text-xs text-neutral-500">{{ registerForm.profile_photo.name }}</span>
+                <span v-if="fieldErrors.profile_photo" class="mt-1 block text-xs text-red-600">{{ fieldErrors.profile_photo[0] }}</span>
+              </label>
+              <label class="block text-sm font-medium text-neutral-700">
+                Password
+                <input v-model="registerForm.password" type="password" required minlength="8" autocomplete="new-password" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="At least 8 characters" />
+                <span v-if="fieldErrors.password" class="mt-1 block text-xs text-red-600">{{ fieldErrors.password[0] }}</span>
+              </label>
+              <label class="block text-sm font-medium text-neutral-700">
+                Confirm password
+                <input v-model="registerForm.password_confirmation" type="password" required autocomplete="new-password" class="mt-1.5 block w-full rounded-lg border border-black/15 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15" placeholder="Enter password again" />
+                <span v-if="fieldErrors.password_confirmation" class="mt-1 block text-xs text-red-600">{{ fieldErrors.password_confirmation[0] }}</span>
+              </label>
+            </div>
+            <p v-if="authError" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ authError }}</p>
+            <button type="submit" :disabled="authLoading" class="w-full rounded-lg bg-brand px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:cursor-wait disabled:opacity-60">
+              {{ authLoading ? 'Creating account...' : 'Create account' }}
+            </button>
+          </form>
         </div>
       </div>
     </Transition>

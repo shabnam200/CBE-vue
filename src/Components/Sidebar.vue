@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import Link from '@/Components/Link.vue'
 import ApplicationLogo from './ApplicationLogo.vue'
 import { auth } from '@/stores/auth'
+import { app } from '@/stores/app'
 
 defineProps({ currentRoute: { type: String, default: 'Home' } })
 
@@ -18,24 +19,37 @@ const base = [
 const admin = ['Admin', '/admin', 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z']
 const nav = computed(() => (auth.isAdmin.value ? [...base, admin] : base))
 const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
+
+// Kon item e badge dekhabe: Messages -> unread message, Notifications -> unread notification
+const badgeOf = (t) => (t === 'Messages' ? app.unreadMessages.value : t === 'Notifications' ? app.unreadNotes.value : 0)
+const fmt = (n) => (n > 9 ? '9+' : n)
 </script>
 
 <template>
   <aside class="hidden w-64 shrink-0 md:block">
     <div class="sticky top-0 flex h-screen flex-col border-r border-black/5 bg-white p-4">
-      <Link href="/" class="flex items-center gap-2 whitespace-nowrap px-3 py-2 font-display text-base font-bold text-ink">
-        <ApplicationLogo class="h-6 w-6 shrink-0 text-brand" /> <span class="text-sm font-semibold">Book Haven</span>
+      <Link href="/" class="group flex items-center gap-2 whitespace-nowrap px-3 py-2 font-display text-base font-bold text-ink">
+        <ApplicationLogo class="h-6 w-6 shrink-0 text-brand transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" /> <span class="text-sm font-semibold">Book Haven</span>
       </Link>
       <nav class="mt-4 flex-1 space-y-1 text-sm">
         <Link
-          v-for="[t, h, d] in nav"
+          v-for="([t, h, d], i) in nav"
           :key="t"
           :href="h"
-          class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-brand-soft"
+          class="group relative flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 hover:bg-brand-soft hover:translate-x-0.5 animate-fade-in"
           :class="t === currentRoute ? 'bg-brand-soft font-medium text-brand' : ''"
+          :style="{ animationDelay: i * 40 + 'ms' }"
         >
-          <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
-          {{ t }}
+          <span class="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand transition-all duration-300" :class="t === currentRoute ? 'opacity-100' : 'h-0 opacity-0'"></span>
+          <svg class="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
+          <span class="flex-1">{{ t }}</span>
+          <!-- Unread badge (toggle-er moto): message/notification ashle number dekhay -->
+          <Transition name="fade">
+            <span v-if="badgeOf(t)" class="relative flex h-5 min-w-5 items-center justify-center" :aria-label="`${badgeOf(t)} unread`">
+              <span class="absolute inset-0 rounded-full bg-brand/40 animate-ping-soft"></span>
+              <span class="relative flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white shadow-sm animate-pop">{{ fmt(badgeOf(t)) }}</span>
+            </span>
+          </Transition>
         </Link>
       </nav>
       <Link href="/logout" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-neutral-600 transition-colors hover:bg-brand-soft hover:text-brand">
@@ -50,10 +64,13 @@ const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H
       v-for="[t, h, d] in nav"
       :key="t"
       :href="h"
-      class="flex min-w-[4.5rem] flex-1 flex-col items-center gap-0.5 px-2 py-2 text-[10px] font-medium"
+      class="relative flex min-w-[4.5rem] flex-1 flex-col items-center gap-0.5 px-2 py-2 text-[10px] font-medium transition-colors"
       :class="t === currentRoute ? 'text-brand' : 'text-neutral-500'"
     >
-      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
+      <span class="relative">
+        <svg class="h-5 w-5 transition-transform duration-200" :class="t === currentRoute ? '-translate-y-0.5 scale-110' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
+        <span v-if="badgeOf(t)" class="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold text-white animate-pop">{{ fmt(badgeOf(t)) }}</span>
+      </span>
       {{ t }}
     </Link>
   </nav>

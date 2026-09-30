@@ -1,3 +1,40 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  /* Staggered reveal: <div class="reveal" :style="{ '--i': index }"> */
+  .reveal { animation: fadeUp .5s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .skeleton { background: linear-gradient(90deg,#eee 25%,#f7f7f7 50%,#eee 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  .lift { transition: transform .25s ease, box-shadow .25s ease; }
+  .lift:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -12px rgb(0 0 0 / .25); }
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* Modal overlay + dialog animation (use <Transition name="modal">) */
+.modal-enter-active, .modal-leave-active { transition: opacity .2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
+.modal-enter-active > *, .modal-leave-active > * { transition: transform .25s cubic-bezier(.22,1,.36,1); }
+.modal-enter-from > *, .modal-leave-to > * { transform: translateY(14px) scale(.96); }
+
+/* Dropdown animation */
+.drop-enter-active, .drop-leave-active { transition: opacity .15s ease, transform .18s cubic-bezier(.22,1,.36,1); transform-origin: top right; }
+.drop-enter-from, .drop-leave-to { opacity: 0; transform: translateY(-6px) scale(.97); }
+
+/* List animation (use <TransitionGroup name="list">) */
+.list-enter-active, .list-leave-active, .list-move { transition: all .35s cubic-bezier(.22,1,.36,1); }
+.list-enter-from { opacity: 0; transform: translateY(14px) scale(.97); }
+.list-leave-to { opacity: 0; transform: translateX(24px); }
+.list-leave-active { position: absolute; width: 100%; }
+.grid-list-leave-active { position: absolute; }
+.grid-list-enter-active, .grid-list-leave-active, .grid-list-move { transition: all .35s cubic-bezier(.22,1,.36,1); }
+.grid-list-enter-from, .grid-list-leave-to { opacity: 0; transform: scale(.9); }
+
+/* Cross-fade for swapping content */
+.fade-enter-active, .fade-leave-active { transition: opacity .2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

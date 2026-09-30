@@ -1,15 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import AppShell from '@/Layouts/AppShell.vue'
+import AppLayout from '@/Layouts/AppLayout.vue'
 import Toast from '@/Components/Toast.vue'
-import Sidebar from '@/Components/Sidebar.vue'
-import Header from '@/Components/Header.vue'
+import Avatar from '@/Components/Avatar.vue'
+import { app } from '@/stores/app'
+import { imageUrl } from '@/bookApi'
 import { getConversations, getMessages, sendMessage, startConversation } from '@/api/modules'
 import { useToast } from '@/composables/useToast'
 import { initials, timeAgo, clock } from '@/utils/format'
-import { CONDITIONS, AVAILABILITY } from '@/bookApi'
-import { categories } from '@/data/mock'
 
 const route = useRoute()
 const { toast, say } = useToast()
@@ -24,20 +23,12 @@ const sending = ref(false)
 const search = ref('')
 const scroller = ref(null)
 
-const genre = ref('')
-const condition = ref('')
-const availability = ref('')
-const nearMe = ref(false)
-const notes = ref([])
-const bellOpen = ref(false)
-const me = ref({ name: '' })
-const unreadNotesCount = computed(() => notes.value.filter((n) => !n.is_read).length)
-
 const active = computed(() => convos.value.find((c) => c.id === activeId.value) || null)
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return convos.value.filter((c) => !q || c.user.name.toLowerCase().includes(q) || (c.book || '').toLowerCase().includes(q))
 })
+const photoOf = (u) => imageUrl(u?.avatar_url ?? u?.avatar ?? u?.profile_photo_url) || ''
 const totalUnread = computed(() => convos.value.reduce((n, c) => n + (c.unread || 0), 0))
 
 const toBottom = async () => {
@@ -52,6 +43,7 @@ async function openConvo(c) {
   try {
     messages.value = (await getMessages(c.id)).data
     c.unread = 0
+    app.setConvoUnread(c.id, 0)
   } catch {
     say('Could not load messages.')
   } finally {
@@ -79,6 +71,7 @@ async function send() {
 }
 
 onMounted(async () => {
+  app.markMessagesSeen()
   try {
     convos.value = (await getConversations()).data
   } catch {
@@ -98,41 +91,20 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-[#FDFBF7] font-sans text-ink">
-    <Sidebar currentRoute="Messages" />
+  <AppLayout
+    current="Messages"
+    title="Messages"
+    subtitle="Chat with other readers to plan the handover."
+    v-model:search="search"
+    search-placeholder="Search people or books"
+  >
+    <template #actions>
+      <span class="rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand">{{ totalUnread }} unread</span>
+    </template>
 
-    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-      <Header 
-        v-model:search="search"
-        v-model:genre="genre"
-        v-model:condition="condition"
-        v-model:availability="availability"
-        v-model:nearMe="nearMe"
-        :categories="categories"
-        :CONDITIONS="CONDITIONS"
-        :AVAILABILITY="AVAILABILITY"
-        :unread="unreadNotesCount"
-        :notes="notes"
-        :bellOpen="bellOpen"
-        :me="me"
-        @toggle-bell="bellOpen = !bellOpen"
-      />
-
-      <main class="flex-1 flex flex-col gap-4 p-5 pb-24 md:pb-6">
-        <div class="flex items-center justify-between rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <div>
-            <h1 class="font-display text-xl font-semibold text-brand">Messages</h1>
-            <p class="mt-0.5 text-xs text-neutral-500">Chat with other readers to plan the handover.</p>
-          </div>
-          <span class="rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand">{{ totalUnread }} unread</span>
-        </div>
-
-        <section class="grid h-[calc(100vh-18rem)] min-h-[30rem] overflow-hidden rounded-2xl border border-black/5 bg-white md:grid-cols-[20rem_minmax(0,1fr)] shadow-sm">
+    <section class="grid h-[calc(100vh-10.5rem)] min-h-[30rem] overflow-hidden rounded-2xl border border-black/5 bg-white md:grid-cols-[20rem_minmax(0,1fr)] shadow-sm">
           <!-- Conversation list -->
           <div class="min-h-0 flex-col border-black/5 md:flex md:border-r" :class="activeId ? 'hidden' : 'flex'">
-            <div class="border-b border-black/5 p-3">
-              <input v-model="search" type="search" placeholder="Search people or books" aria-label="Search conversations" class="w-full rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
-            </div>
             <div class="min-h-0 flex-1 overflow-y-auto">
               <div v-if="loadingList" class="animate-pulse space-y-3 p-4">
                 <div v-for="i in 4" :key="i" class="flex items-center gap-3"><div class="h-10 w-10 rounded-full bg-neutral-200"></div><div class="flex-1 space-y-2"><div class="h-3 w-24 rounded bg-neutral-200"></div><div class="h-3 w-40 rounded bg-neutral-100"></div></div></div>
@@ -140,14 +112,15 @@ onMounted(async () => {
               <p v-else-if="!filtered.length" class="p-6 text-center text-sm text-neutral-500">No conversations found.</p>
               <template v-else>
               <button
-                v-for="c in filtered"
+                v-for="(c, i) in filtered"
                 :key="c.id"
                 type="button"
-                class="flex w-full items-center gap-3 border-b border-black/5 px-4 py-3 text-left transition-colors hover:bg-brand-soft/60"
+                :style="{ '--i': i }"
+                class="reveal flex w-full items-center gap-3 border-b border-black/5 px-4 py-3 text-left transition-colors hover:bg-brand-soft/60"
                 :class="c.id === activeId ? 'bg-brand-soft' : ''"
                 @click="openConvo(c)"
               >
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{{ initials(c.user.name) }}</span>
+                <Avatar :src="photoOf(c.user)" :name="c.user.name" size="h-10 w-10 text-sm" />
                 <span class="min-w-0 flex-1">
                   <span class="flex items-center justify-between gap-2">
                     <span class="truncate text-sm font-medium">{{ c.user.name }}</span>
@@ -155,7 +128,7 @@ onMounted(async () => {
                   </span>
                   <span class="flex items-center justify-between gap-2">
                     <span class="truncate text-xs" :class="c.unread ? 'font-medium text-ink' : 'text-neutral-500'">{{ c.last_message?.text || 'Say hello!' }}</span>
-                    <span v-if="c.unread" class="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white">{{ c.unread }}</span>
+                    <span v-if="c.unread" class="flex h-4 min-w-4 shrink-0 animate-pop items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white">{{ c.unread }}</span>
                   </span>
                 </span>
               </button>
@@ -170,7 +143,7 @@ onMounted(async () => {
                 <button type="button" class="rounded-lg p-1.5 text-neutral-500 hover:bg-brand-soft md:hidden" aria-label="Back to conversations" @click="activeId = null">
                   <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                 </button>
-                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{{ initials(active.user.name) }}</span>
+                <Avatar :src="photoOf(active.user)" :name="active.user.name" size="h-9 w-9 text-sm" />
                 <div class="min-w-0">
                   <p class="truncate text-sm font-medium">{{ active.user.name }}</p>
                   <p class="truncate text-xs text-neutral-500">{{ active.user.city }}<template v-if="active.book"> · about "{{ active.book }}"</template></p>
@@ -180,7 +153,7 @@ onMounted(async () => {
               <div ref="scroller" class="min-h-0 flex-1 space-y-3 overflow-y-auto bg-paper/60 p-4">
                 <p v-if="loadingMsgs" class="py-10 text-center text-sm text-neutral-400">Loading messages...</p>
                 <p v-else-if="!messages.length" class="py-10 text-center text-sm text-neutral-500">No messages yet. Say hello to {{ active.user.name.split(' ')[0] }}!</p>
-                <div v-for="m in messages" :key="m.id" class="flex" :class="m.from === 'me' ? 'justify-end' : 'justify-start'">
+                <div v-for="m in messages" :key="m.id" class="flex animate-scale-in" :class="m.from === 'me' ? 'justify-end' : 'justify-start'">
                   <div class="max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm" :class="m.from === 'me' ? 'rounded-br-md bg-brand text-white' : 'rounded-bl-md border border-black/5 bg-white text-ink'">
                     <p class="whitespace-pre-wrap break-words">{{ m.text }}</p>
                     <p class="mt-1 text-[10px]" :class="m.from === 'me' ? 'text-white/70' : 'text-neutral-400'">{{ clock(m.at) }}</p>
@@ -203,9 +176,7 @@ onMounted(async () => {
             </div>
           </div>
         </section>
-      </main>
-    </div>
-
-    <Toast :message="toast" />
-  </div>
+      
+    <template #overlay><Toast :message="toast" /></template>
+  </AppLayout>
 </template>

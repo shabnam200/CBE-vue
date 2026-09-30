@@ -27,13 +27,27 @@ export async function login({ email, password }) {
   return pick(await http.post('/login', { email, password }))            // POST /api/login
 }
 
-export async function register({ name, email, password, password_confirmation }) {
+export async function register(payload) {
+  const { name, email, password, password_confirmation } = payload
   if (USE_MOCK) {
     await wait()
     if (password !== password_confirmation) throw fail('Passwords do not match.', 'password_confirmation')
     return { token: 'mock-token', user: mockUser(email, name) }
   }
-  return pick(await http.post('/register', { name, email, password, password_confirmation })) // POST /api/register
+
+  const body = { name, email, password, password_confirmation }
+  const city = payload.city ?? payload.location
+  const profilePhoto = payload.profile_photo ?? payload.image
+  if (city) body.city = city
+
+  if (profilePhoto) {
+    const formData = new FormData()
+    Object.entries(body).forEach(([key, value]) => formData.append(key, value))
+    formData.append('profile_photo', profilePhoto)
+    return pick(await http.post('/register', formData)) // POST /api/register
+  }
+
+  return pick(await http.post('/register', body)) // POST /api/register
 }
 
 export async function logout() {

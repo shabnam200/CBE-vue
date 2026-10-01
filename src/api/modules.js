@@ -351,6 +351,21 @@ export async function removeFromWishlist(bookId) {
   return { data: true }
 }
 
+export async function getUserHistory(user) {
+  if (!USE_MOCK) {
+    return (await http.get(`/users/${user.id}/history`)).data
+  }
+
+  await wait(200)
+  const listedBooks = books.filter((book) => book.owner?.id === user.id || book.user_id === user.id)
+  const completed = _requests.filter((request) => request.other_user?.id === user.id && request.status === 'completed').length
+  return {
+    profile: user,
+    stats: { books_listed: listedBooks.length, exchanges_completed: completed, ratings_received: 0 },
+    ratings: [],
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * PROFILE
  * ------------------------------------------------------------------ */

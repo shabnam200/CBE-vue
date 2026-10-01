@@ -11,12 +11,25 @@ const routes = [
   { path: '/admin', component: () => import('../Pages/Admin/Dashboard.vue'), meta: { auth: true, admin: true } },
   { path: '/profile', component: () => import('../Pages/Profile/Edit.vue'), meta: { auth: true } },
 
-  { path: '/login', component: () => import('../Pages/Auth/Login.vue'), meta: { guest: true } },
-  { path: '/register', component: () => import('../Pages/Auth/Register.vue'), meta: { guest: true } },
+  {
+    path: '/login',
+    redirect: (to) => ({ path: '/', query: { auth: 'login', ...(to.query.redirect ? { redirect: to.query.redirect } : {}) } }),
+  },
+  {
+    path: '/register',
+    redirect: (to) => ({
+      path: '/',
+      query: {
+        auth: 'register',
+        ...(to.query.email ? { email: to.query.email } : {}),
+        ...(to.query.redirect ? { redirect: to.query.redirect } : {}),
+      },
+    }),
+  },
   { path: '/forgot-password', component: () => import('../Pages/Auth/ForgotPassword.vue'), meta: { guest: true } },
   { path: '/reset-password/:token', component: () => import('../Pages/Auth/ResetPassword.vue'), meta: { guest: true }, props: true },
 
-  { path: '/logout', component: () => import('../Pages/Auth/Login.vue'), beforeEnter: async () => { await auth.logout(); app.stop(); return '/' } },
+  { path: '/logout', beforeEnter: async () => { await auth.logout(); app.stop(); return '/' } },
 
   { path: '/requests', component: () => import('../Pages/Requests.vue'), meta: { auth: true } },
   { path: '/messages', component: () => import('../Pages/Messages.vue'), meta: { auth: true } },

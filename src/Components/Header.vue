@@ -63,7 +63,7 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
 </script>
 
 <template>
-  <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-md">
+  <div class="sticky top-0 z-40 isolate flex-none bg-white shadow-sm">
     <!-- 1) Top bar -->
     <header class="border-b border-black/5 bg-white/90">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-6">
@@ -148,8 +148,7 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
     </header>
 
     <!-- 2) Filter pills stay with the sticky bar so content never scrolls behind them. -->
-    <Transition name="fade" appear>
-      <div v-if="hasFilterRow" class="relative z-10 flex items-center gap-2 overflow-x-auto border-b border-black/5 bg-white px-4 pb-3 pt-3 sm:flex-wrap md:px-6">
+    <div v-if="hasFilterRow" class="filter-row relative z-10 flex min-h-[4.25rem] w-full flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain whitespace-nowrap border-b border-black/5 bg-white px-4 py-3 md:px-6">
       <div v-for="f in filters" :key="f.key" class="relative shrink-0">
         <select :value="filterValues[f.key] || ''" :aria-label="f.label" :class="[pillCls, filterValues[f.key] ? 'border-brand/50 font-medium text-brand' : 'text-neutral-700']" @change="setFilter(f.key, $event.target.value)">
           <option value="">{{ f.label }}</option>
@@ -167,7 +166,17 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
       <Transition name="fade">
         <button v-if="activeFilters || nearMe" type="button" class="shrink-0 px-2 text-sm font-medium text-brand underline-offset-4 hover:underline" @click="clearFilters">Clear filters</button>
       </Transition>
-      </div>
-    </Transition>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.filter-row { animation: filter-row-in .4s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes filter-row-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-row { animation: none; }
+}
+</style>

@@ -114,9 +114,14 @@ async function save() {
   ;['title', 'author', 'genre', 'condition', 'availability_type'].forEach((k) => fd.append(k, form.value[k]))
   // Multiple photos: images[] = notun file, keep_images[] = ager je gulo rakhbo. `image` = cover (purono backend er jonno)
   const added = photos.value.filter((p) => p.file)
+  const kept = photos.value.filter((p) => !p.file)
   added.forEach((p) => fd.append('images[]', p.file))
   if (added.length) fd.append('image', added[0].file)
-  photos.value.filter((p) => !p.file).forEach((p) => fd.append('keep_images[]', p.url))
+  kept.forEach((p) => fd.append('keep_images[]', p.url))
+  photos.value.forEach((p) => {
+    const source = p.file ? `upload:${added.indexOf(p)}` : `keep:${kept.indexOf(p)}`
+    fd.append('photo_order[]', source)
+  })
 
   saving.value = true
   try {

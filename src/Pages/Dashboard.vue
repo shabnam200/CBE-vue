@@ -11,7 +11,7 @@ import AppLayout from '../Layouts/AppLayout.vue'
 import { auth } from '../stores/auth'
 import { me as mockMe } from '../data/mock'
 import { sendExchangeRequest, toggleWishlist } from '../api'
-import { getBooks, getTopBooks, getBook, getMatches, getAuthorPhoto, CONDITIONS, AVAILABILITY } from '../bookApi'
+import { getBooks, getTopBooks, getBook, getMatches, getAuthorProfile, CONDITIONS, AVAILABILITY } from '../bookApi'
 import { USE_MOCK } from '../config'
 import { categories, authors as mockAuthors } from '../data/mock'
 
@@ -51,7 +51,7 @@ const paginatedAuthors = computed(() => {
 })
 
 const totalAuthorPages = computed(() => Math.ceil(authors.value.length / authorsPerPage))
-const requestedAuthorPhotos = new Set()
+const requestedAuthorProfiles = new Set()
 
 const authorNameKey = (name) => String(name || '')
   .normalize('NFKD')
@@ -60,20 +60,24 @@ const authorNameKey = (name) => String(name || '')
   .replace(/[^a-z0-9]+/g, ' ')
   .trim()
 
-async function loadAuthorPhotos(visibleAuthors) {
+async function loadAuthorProfiles(visibleAuthors) {
   await Promise.all(visibleAuthors.map(async (author) => {
     const key = authorNameKey(author.name)
-    if (!key || author.avatar || requestedAuthorPhotos.has(key)) return
-    requestedAuthorPhotos.add(key)
+    if (!key || author.profileLoaded || requestedAuthorProfiles.has(key)) return
+    requestedAuthorProfiles.add(key)
+    author.profileLoading = true
     try {
-      author.avatar = await getAuthorPhoto(author.name)
+      Object.assign(author, await getAuthorProfile(author.name))
     } catch {
-      author.avatar = ''
+      author.profileError = true
+    } finally {
+      author.profileLoading = false
+      author.profileLoaded = true
     }
   }))
 }
 
-watch(paginatedAuthors, (visibleAuthors) => loadAuthorPhotos(visibleAuthors), { immediate: true })
+watch(paginatedAuthors, (visibleAuthors) => loadAuthorProfiles(visibleAuthors), { immediate: true })
 
 const filtering = computed(() => Boolean(search.value || filters.value.genre || filters.value.condition || filters.value.availability || nearMe.value))
 function clearFilters() { search.value = ''; filters.value = { genre: '', condition: '', availability: '' }; nearMe.value = false }
@@ -162,7 +166,9 @@ const open = async (b) => {
 }
 const openAuthor = (author) => {
   selectedAuthor.value = author
+  loadAuthorProfiles([author])
 }
+const booksByAuthor = (author) => [...(author?.bestselling || []), ...(author?.otherBooks || [])]
 async function openAuthorBook(book) {
   selectedAuthor.value = null
   await nextTick()
@@ -297,35 +303,45 @@ async function wish(b) {
       <!-- Author popup -->
       <Transition name="modal">
         <div v-if="selectedAuthor" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]" @click.self="selectedAuthor = null">
-          <div role="dialog" aria-modal="true" class="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-black/5 bg-white p-6 shadow-xl">
-            <div class="flex items-center justify-between border-b pb-4">
-              <div class="flex items-center gap-3">
-                <img v-if="selectedAuthor.avatar" :src="selectedAuthor.avatar" :alt="selectedAuthor.name" class="h-12 w-12 rounded-full border object-cover" @error="selectedAuthor.avatar = ''" />
-                <div v-else class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-sm font-semibold text-brand">{{ initials(selectedAuthor.name) }}</div>
-                <div><h3 class="font-display text-lg font-semibold">{{ selectedAuthor.name }}</h3><p class="text-xs text-neutral-500">Author Profile</p></div>
+          <div role="dialog" aria-modal="true" aria-labelledby="author-title" class="grid h-[min(92dvh,48rem)] w-full max-w-5xl grid-cols-1 grid-rows-[minmax(12rem,0.42fr)_minmax(0,1fr)] overflow-hidden rounded-2xl border border-black/5 bg-white shadow-2xl lg:grid-cols-[minmax(16rem,0.8fr)_1.2fr] lg:grid-rows-1">
+            <aside class="relative min-h-0 overflow-hidden bg-[#e9e1d7]">
+              <img v-if="selectedAuthor.avatar" :src="selectedAuthor.avatar" :alt="selectedAuthor.name" class="absolute inset-0 h-full w-full object-cover" @error="selectedAuthor.avatar = ''" />
+              <div v-else class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#f2e6d5] to-[#d9c7b2] font-display text-7xl font-semibold text-brand/50">{{ initials(selectedAuthor.name) }}</div>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"></div>
+              <div class="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">Author profile</p>
+                <h3 id="author-title" class="mt-2 font-display text-3xl font-semibold leading-tight sm:text-4xl">{{ selectedAuthor.name }}</h3>
+                <p v-if="selectedAuthor.birth_date || selectedAuthor.death_date" class="mt-2 text-sm text-white/80">
+                  {{ selectedAuthor.birth_date || 'Life dates unavailable' }}<template v-if="selectedAuthor.death_date"> – {{ selectedAuthor.death_date }}</template>
+                </p>
               </div>
-              <button class="text-2xl leading-none text-neutral-400 transition-colors hover:text-ink" aria-label="Close" @click="selectedAuthor = null">×</button>
-            </div>
-            <div class="mt-4 space-y-4">
-              <div>
-                <h4 class="mb-2 text-sm font-semibold text-brand">Bestselling Books</h4>
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <button v-for="b in selectedAuthor.bestselling" :key="b.id" class="lift rounded-xl border p-2 text-left hover:bg-brand-soft" @click="openAuthorBook(b)">
-                    <div class="mb-1 aspect-[3/4] overflow-hidden rounded-lg bg-neutral-100"><BookCover :book="b" /></div>
-                    <p class="truncate text-xs font-medium">{{ b.title }}</p>
+            </aside>
+
+            <section class="relative min-h-0 min-w-0 overflow-y-auto overscroll-contain p-5 sm:p-8">
+              <button type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-xl text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-ink" aria-label="Close" @click="selectedAuthor = null">×</button>
+              <div class="pr-10">
+                <p class="text-xs font-semibold uppercase tracking-wider text-brand">Biography</p>
+                <p v-if="selectedAuthor.profileLoading && !selectedAuthor.bio" class="mt-3 h-20 animate-pulse rounded-lg bg-neutral-100"></p>
+                <p v-else-if="selectedAuthor.bio" class="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-600">{{ selectedAuthor.bio }}</p>
+                <p v-else class="mt-3 text-sm leading-6 text-neutral-500">A biography isn’t available from Open Library for this author.</p>
+                <a v-if="selectedAuthor.wikipedia" :href="selectedAuthor.wikipedia" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex text-xs font-semibold text-brand underline underline-offset-4 hover:text-brand-dark">More about {{ selectedAuthor.name }}</a>
+              </div>
+
+              <div class="mt-7 border-t border-black/10 pt-6">
+                <div class="flex items-baseline justify-between gap-3">
+                  <h4 class="font-display text-xl font-semibold">Books in the community</h4>
+                  <span class="shrink-0 text-xs text-neutral-500">{{ booksByAuthor(selectedAuthor).length }}</span>
+                </div>
+                <div v-if="booksByAuthor(selectedAuthor).length" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <button v-for="b in booksByAuthor(selectedAuthor)" :key="b.id" type="button" class="lift min-w-0 rounded-xl border border-black/10 bg-white p-2 text-left transition-colors hover:border-brand/30 hover:bg-brand-soft/40" @click="openAuthorBook(b)">
+                    <div class="mb-2 aspect-[3/4] overflow-hidden rounded-lg bg-neutral-100"><BookCover :book="b" /></div>
+                    <p class="truncate text-xs font-semibold text-ink">{{ b.title }}</p>
+                    <p class="mt-1 truncate text-[10px] capitalize text-neutral-500">{{ b.availability_type }} · {{ b.condition }}</p>
                   </button>
                 </div>
+                <p v-else class="mt-4 rounded-lg bg-paper px-4 py-6 text-center text-sm text-neutral-500">No books by this author are currently listed.</p>
               </div>
-              <div v-if="selectedAuthor.otherBooks?.length > 0">
-                <h4 class="mb-2 text-sm font-semibold text-brand">Other Books</h4>
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <button v-for="b in selectedAuthor.otherBooks" :key="b.id" class="lift rounded-xl border p-2 text-left hover:bg-brand-soft" @click="openAuthorBook(b)">
-                    <div class="mb-1 aspect-[3/4] overflow-hidden rounded-lg bg-neutral-100"><BookCover :book="b" /></div>
-                    <p class="truncate text-xs font-medium">{{ b.title }}</p>
-                  </button>
-                </div>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       </Transition>
@@ -333,7 +349,7 @@ async function wish(b) {
       <!-- Book popup -->
       <Transition name="modal">
         <div v-if="selected" class="fixed inset-0 z-[60] flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]" @click.self="selected = null">
-          <div role="dialog" aria-modal="true" aria-labelledby="book-title" class="grid max-h-[90vh] w-full max-w-2xl gap-6 overflow-y-auto rounded-2xl border border-black/5 bg-white p-6 sm:grid-cols-[200px_1fr]">
+          <div role="dialog" aria-modal="true" aria-labelledby="book-title" class="grid max-h-[90dvh] min-h-0 w-full max-w-2xl gap-6 overflow-y-auto overscroll-contain rounded-2xl border border-black/5 bg-white p-6 sm:grid-cols-[200px_1fr]">
             <div class="mx-auto w-40 sm:w-full"><BookGallery :book="selected" /></div>
             <div>
               <div class="flex items-start justify-between gap-3">

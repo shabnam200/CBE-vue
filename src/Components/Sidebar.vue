@@ -4,6 +4,7 @@ import Link from '@/Components/Link.vue'
 import ApplicationLogo from './ApplicationLogo.vue'
 import { auth } from '@/stores/auth'
 import { app } from '@/stores/app'
+import { useChatUnread } from '@/composables/useChatUnread'
 
 defineProps({ currentRoute: { type: String, default: 'Home' } })
 
@@ -20,11 +21,10 @@ const admin = ['Admin', '/admin', 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8
 const nav = computed(() => (auth.isAdmin.value ? [...base, admin] : base))
 const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
 
-// Kon item e badge dekhabe: Messages -> unread message, Notifications -> unread notification
-const badgeOf = (t) => (t === 'Messages' ? app.unreadMessages.value : t === 'Notifications' ? app.unreadNotes.value : 0)
+const chat = useChatUnread()
+const badgeOf = (t) => (t === 'Messages' ? chat.count.value : t === 'Notifications' ? app.unreadNotes.value : 0)
 const fmt = (n) => (n > 9 ? '9+' : n)
 
-// Sidebar shrink/expand — choice browser e mone thake
 const STORAGE_KEY = 'bookhaven:sidebar-collapsed'
 const collapsed = ref(false)
 try { collapsed.value = localStorage.getItem(STORAGE_KEY) === '1' } catch { /* ignore */ }
@@ -38,21 +38,21 @@ const tipCls = 'pointer-events-none absolute left-full top-1/2 z-50 ml-4 -transl
 <template>
   <aside class="relative z-40 hidden shrink-0 transition-[width] duration-300 ease-out md:block" :class="collapsed ? 'w-[4.5rem]' : 'w-64'">
     <div class="sticky top-0 flex h-screen flex-col border-r border-black/5 bg-white px-3 py-4">
-      <!-- Collapse / expand button (sidebar er dhar e) -->
+      <!-- Collapse / expand button (sidebar er dhar e aro clearly visible kora holo) -->
       <button
         type="button"
-        class="absolute -right-3 top-7 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-500 shadow-sm transition-colors hover:border-brand/40 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+        class="absolute -right-3.5 top-7 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-black/15 bg-white text-neutral-700 shadow-md transition-all hover:bg-brand hover:text-white hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
         :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         :aria-expanded="!collapsed"
         @click="collapsed = !collapsed"
       >
-        <svg class="h-3.5 w-3.5 transition-transform duration-300" :class="collapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        <svg class="h-4 w-4 transition-transform duration-300" :class="collapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
       </button>
 
       <!-- Logo -->
-      <Link href="/" class="group flex items-center gap-3 whitespace-nowrap rounded-xl px-1.5 py-1">
+      <Link href="/" class="group relative flex items-center gap-3 overflow-hidden rounded-xl px-1.5 py-1" :class="collapsed ? 'justify-center' : ''">
         <ApplicationLogo class="h-9 w-9 shrink-0 text-brand transition-transform duration-300 group-hover:scale-105" />
-        <span class="min-w-0 overflow-hidden transition-opacity duration-200" :class="collapsed ? 'opacity-0' : 'opacity-100'">
+        <span class="min-w-0 overflow-hidden whitespace-nowrap transition-all duration-200" :class="collapsed ? 'max-w-0 opacity-0' : 'max-w-[11rem] opacity-100'">
           <span class="block font-display text-xl font-bold leading-none text-ink">Book Haven</span>
           <span class="mt-1 block text-[11px] text-neutral-500">More Books. More Worlds.</span>
         </span>
@@ -69,20 +69,17 @@ const tipCls = 'pointer-events-none absolute left-full top-1/2 z-50 ml-4 -transl
         >
           <span class="relative shrink-0">
             <svg class="h-5 w-5 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
-            <!-- Collapsed hole icon er kone chhoto badge -->
             <span v-if="collapsed && badgeOf(t)" class="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold text-white ring-2 ring-white animate-pop">{{ fmt(badgeOf(t)) }}</span>
           </span>
           <span :class="[labelCls, collapsed ? 'opacity-0' : 'opacity-100']">{{ t }}</span>
           <Transition name="fade">
             <span v-if="!collapsed && badgeOf(t)" class="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold animate-pop" :class="t === currentRoute ? 'bg-white text-brand' : 'bg-brand text-white'" :aria-label="`${badgeOf(t)} unread`">{{ fmt(badgeOf(t)) }}</span>
           </Transition>
-          <!-- Collapsed hole hover e naam dekhabe -->
           <span v-if="collapsed" role="tooltip" :class="tipCls">{{ t }}<template v-if="badgeOf(t)"> · {{ badgeOf(t) }}</template></span>
         </Link>
       </nav>
 
       <div class="mt-auto">
-        <!-- Decorative quote (collapsed ba chhoto screen e lukano) -->
         <div v-if="!collapsed" class="mb-4 hidden px-3 [@media(min-height:720px)]:block">
           <svg class="h-16 w-20 text-brand" viewBox="0 0 96 72" fill="none" aria-hidden="true">
             <rect x="28" y="52" width="56" height="10" rx="2" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-opacity=".4" stroke-width="1.5" />

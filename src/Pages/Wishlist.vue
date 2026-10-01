@@ -104,7 +104,6 @@ const requestBook = async (book) => {
   <AppLayout
     current="Wishlist"
     title="Wishlist"
-    subtitle="Books you saved. Request them when they are available."
     v-model:search="searchQuery"
     search-placeholder="Search your wishlist"
     :filters="filterDefs"

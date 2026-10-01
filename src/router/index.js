@@ -9,8 +9,8 @@ const routes = [
   { path: '/wishlist', component: () => import('../Pages/Wishlist.vue'), meta: { auth: true } },
   { path: '/my-books', component: () => import('../Pages/MyBooks.vue'), meta: { auth: true } },
   { path: '/admin', component: () => import('../Pages/Admin/Dashboard.vue'), meta: { auth: true, admin: true } },
-  { path: '/profile', component: () => import('../Pages/Profile/Edit.vue'), meta: { auth: true } },
-
+  { path: '/profile', name: 'profile', component: () => import('../Pages/ProfileOverview.vue'), meta: { auth: true } },
+  { path: '/profile/edit', name: 'profile.edit', component: () => import('../Pages/Profile/Edit.vue'), meta: { auth: true } },
   {
     path: '/login',
     redirect: (to) => ({ path: '/', query: { auth: 'login', ...(to.query.redirect ? { redirect: to.query.redirect } : {}) } }),

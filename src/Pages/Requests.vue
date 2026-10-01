@@ -133,28 +133,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <AppLayout
     current="Requests"
     title="Requests"
-    subtitle="Accept, decline and track exchange, donation and lending requests."
     v-model:search="search"
     search-placeholder="Search book or person"
   >
-    <template #actions>
-      <span class="rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand">{{ waitingForMe }} waiting for you</span>
-    </template>
-
     <section class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="inline-flex rounded-xl bg-paper p-1 text-sm">
-              <button
-                v-for="d in directions"
-                :key="d.value"
-                type="button"
-                class="rounded-lg px-4 py-1.5 transition-colors"
-                :class="direction === d.value ? 'bg-white font-medium text-brand shadow-sm' : 'text-neutral-600 hover:text-brand'"
-                @click="direction = d.value"
-              >
-                {{ d.label }} <span class="text-xs text-neutral-400">({{ counts[d.value] }})</span>
-              </button>
+            <div class="flex items-center gap-3">
+              <div class="inline-flex rounded-xl bg-paper p-1 text-sm">
+                <button
+                  v-for="d in directions"
+                  :key="d.value"
+                  type="button"
+                  class="rounded-lg px-4 py-1.5 transition-colors"
+                  :class="direction === d.value ? 'bg-white font-medium text-brand shadow-sm' : 'text-neutral-600 hover:text-brand'"
+                  @click="direction = d.value"
+                >
+                  {{ d.label }} <span class="text-xs text-neutral-400">({{ counts[d.value] }})</span>
+                </button>
+              </div>
+              <span class="rounded-full bg-brand-soft px-3 py-1 text-[11px] font-semibold text-brand">{{ waitingForMe }} waiting for you</span>
             </div>
+
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="[v, l] in statuses"
@@ -192,14 +191,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                   <span :key="r.status" class="animate-pop rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize" :class="statusStyle[r.status]">{{ r.status }}</span>
                 </div>
                 <p class="text-xs text-neutral-500">by {{ r.book.author }}</p>
+                
+                <!-- Avatar is now clickable to open profile -->
                 <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-neutral-700">
-                  <Avatar :src="r.other_user.profile_photo_url || ''" :name="r.other_user.name" size="h-7 w-7 text-[10px]" />
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+                    :aria-label="`View ${r.other_user.name}'s profile and reviews`"
+                    :title="`View ${r.other_user.name}'s profile`"
+                    @click="openProfile(r.other_user)"
+                  >
+                    <Avatar :src="r.other_user.profile_photo_url || ''" :name="r.other_user.name" size="h-7 w-7 text-[10px]" />
+                  </button>
                   <template v-if="r.direction === 'incoming'"><span class="font-medium">{{ r.other_user.name }}</span> ({{ r.other_user.city }}) wants this book.</template>
                   <template v-else>You asked <span class="font-medium">{{ r.other_user.name }}</span> ({{ r.other_user.city }}).</template>
-                  <button type="button" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30" :aria-label="`View ${r.other_user.name}'s profile and reviews`" :title="`View ${r.other_user.name}'s profile`" @click="openProfile(r.other_user)">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 21v-2a7 7 0 0 1 14 0v2" /></svg>
-                  </button>
                 </p>
+
                 <p v-if="r.message" class="mt-2 rounded-lg bg-paper px-3 py-2 text-sm text-neutral-600">"{{ r.message }}"</p>
                 <p class="mt-2 text-xs text-neutral-400">{{ timeAgo(r.created_at) }}</p>
               </div>
@@ -269,23 +276,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
       </Transition>
 
-      <!-- Rating popup -->
-    <Transition name="modal"><div v-if="rateFor" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]" @click.self="closeRate">
-      <div role="dialog" aria-modal="true" aria-labelledby="rate-title" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <h3 id="rate-title" class="font-display text-lg font-semibold">Rate {{ rateFor.other_user.name }}</h3>
-        <p class="mt-1 text-sm text-neutral-500">How was your experience with "{{ rateFor.book.title }}"?</p>
-        <div class="mt-5 flex justify-center gap-1" @mouseleave="hover = 0">
-          <button v-for="n in 5" :key="n" type="button" :aria-label="`${n} star${n > 1 ? 's' : ''}`" class="p-1" @mouseenter="hover = n" @click="rating = n">
-            <svg class="h-9 w-9 transition-all duration-150 hover:scale-125" :class="n <= (hover || rating) ? 'text-[#B07D3A]' : 'text-neutral-300'" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-          </button>
+      <Transition name="modal"><div v-if="rateFor" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]" @click.self="closeRate">
+        <div role="dialog" aria-modal="true" aria-labelledby="rate-title" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <h3 id="rate-title" class="font-display text-lg font-semibold">Rate {{ rateFor.other_user.name }}</h3>
+          <p class="mt-1 text-sm text-neutral-500">How was your experience with "{{ rateFor.book.title }}"?</p>
+          <div class="mt-5 flex justify-center gap-1" @mouseleave="hover = 0">
+            <button v-for="n in 5" :key="n" type="button" :aria-label="`${n} star${n > 1 ? 's' : ''}`" class="p-1" @mouseenter="hover = n" @click="rating = n">
+              <svg class="h-9 w-9 transition-all duration-150 hover:scale-125" :class="n <= (hover || rating) ? 'text-[#B07D3A]' : 'text-neutral-300'" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+            </button>
+          </div>
+          <textarea v-model="comment" rows="3" maxlength="300" placeholder="Write a short comment (optional)" class="mt-4 w-full rounded-lg border border-black/10 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"></textarea>
+          <div class="mt-5 flex justify-end gap-3 text-sm">
+            <button type="button" class="rounded-lg border border-black/10 px-4 py-2 font-medium text-neutral-700 hover:bg-neutral-50" @click="closeRate">Cancel</button>
+            <button type="button" :disabled="rating_busy" class="rounded-lg bg-brand px-5 py-2 font-medium text-white transition-colors hover:bg-brand-dark disabled:opacity-50" @click="sendRating">{{ rating_busy ? 'Sending...' : 'Submit rating' }}</button>
+          </div>
         </div>
-        <textarea v-model="comment" rows="3" maxlength="300" placeholder="Write a short comment (optional)" class="mt-4 w-full rounded-lg border border-black/10 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"></textarea>
-        <div class="mt-5 flex justify-end gap-3 text-sm">
-          <button type="button" class="rounded-lg border border-black/10 px-4 py-2 font-medium text-neutral-700 hover:bg-neutral-50" @click="closeRate">Cancel</button>
-          <button type="button" :disabled="rating_busy" class="rounded-lg bg-brand px-5 py-2 font-medium text-white transition-colors hover:bg-brand-dark disabled:opacity-50" @click="sendRating">{{ rating_busy ? 'Sending...' : 'Submit rating' }}</button>
-        </div>
-      </div>
-    </div></Transition>
+      </div></Transition>
 
       <Toast :message="toast" />
     </template>

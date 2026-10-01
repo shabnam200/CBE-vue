@@ -135,11 +135,10 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
                 <Avatar :src="app.avatar.value || ''" :name="user.name" size="h-11 w-11 text-sm" />
                 <div class="min-w-0"><p class="truncate text-sm font-semibold">{{ user.name }}</p><p class="truncate text-xs text-neutral-500">{{ user.email || user.city }}</p></div>
               </div>
-              <div class="p-1.5 text-sm">
-                <router-link to="/profile" class="block rounded-lg px-3 py-2 transition-colors hover:bg-brand-soft" @click="menu = null">My profile &amp; photo</router-link>
-                <router-link to="/my-books" class="block rounded-lg px-3 py-2 transition-colors hover:bg-brand-soft" @click="menu = null">My books</router-link>
-                <router-link to="/logout" class="block rounded-lg px-3 py-2 text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" @click="menu = null">Log out</router-link>
-              </div>
+                <div class="p-1.5 text-sm">
+                  <router-link to="/profile/edit" class="block rounded-lg px-3 py-2 transition-colors hover:bg-brand-soft" @click="menu = null">Edit profile</router-link>
+                  <router-link to="/logout" class="block rounded-lg px-3 py-2 text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" @click="menu = null">Log out</router-link>
+                </div>
             </div>
           </Transition>
         </div>

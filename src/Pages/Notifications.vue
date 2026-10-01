@@ -47,20 +47,21 @@ async function remove(n) {
   <AppLayout
     current="Notifications"
     title="Notifications"
-    subtitle="Wishlist alerts, request updates, messages and ratings."
+   
     v-model:search="search"
     search-placeholder="Search notifications"
     :filters="filterDefs"
     v-model:filter-values="filters"
   >
-    <template #actions>
-      <button type="button" :disabled="!unread" class="rounded-xl border border-black/10 px-3 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-40 disabled:hover:bg-transparent" @click="readAll">Mark all as read</button>
-    </template>
+    <template #actions></template>
 
     <section class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-      <div class="inline-flex rounded-xl bg-paper p-1 text-sm">
-        <button type="button" class="rounded-lg px-4 py-1.5 transition-all" :class="filter === 'all' ? 'bg-white font-medium text-brand shadow-sm' : 'text-neutral-600 hover:text-brand'" @click="filter = 'all'">All ({{ notes.length }})</button>
-        <button type="button" class="rounded-lg px-4 py-1.5 transition-all" :class="filter === 'unread' ? 'bg-white font-medium text-brand shadow-sm' : 'text-neutral-600 hover:text-brand'" @click="filter = 'unread'">Unread ({{ unread }})</button>
+      <div class="flex items-center justify-between">
+        <div class="inline-flex rounded-xl bg-paper p-1 text-sm">
+          <button type="button" class="rounded-lg px-4 py-1.5 transition-all" :class="filter === 'all' ? 'bg-white font-medium text-brand shadow-sm' : 'text-neutral-600 hover:text-brand'" @click="filter = 'all'">All ({{ notes.length }})</button>
+          <button type="button" class="rounded-lg px-4 py-1.5 transition-all" :class="filter === 'unread' ? 'bg-white font-medium text-brand shadow-sm' : 'text-neutral-600 hover:text-brand'" @click="filter = 'unread'">Unread ({{ unread }})</button>
+        </div>
+        <button type="button" :disabled="!unread" class="rounded-xl border border-black/10 px-3 py-2 text-xs font-medium text-brand transition-colors hover:bg-brand-soft disabled:opacity-40 disabled:hover:bg-transparent" @click="readAll">Mark all as read</button>
       </div>
 
       <div v-if="loading" class="mt-5 space-y-3">

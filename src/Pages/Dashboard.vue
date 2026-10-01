@@ -10,9 +10,10 @@ import heroImg from '../assets/hero-books.jpg'
 import AppLayout from '../Layouts/AppLayout.vue'
 import { auth } from '../stores/auth'
 import { useLazyRow } from '../composables/useLazyRow'
+import { app } from '../stores/app'
 import { me as mockMe } from '../data/mock'
 import { sendExchangeRequest, toggleWishlist } from '../api'
-import { getBooks, getTopBooks, getBook, getMatches, getAuthorProfile, CONDITIONS, AVAILABILITY } from '../bookApi'
+import { getBooks, getTopBooks, getBook, getMatches, getAuthorProfiles, CONDITIONS, AVAILABILITY } from '../bookApi'
 import { USE_MOCK } from '../config'
 import { categories, authors as mockAuthors } from '../data/mock'
 
@@ -58,20 +59,24 @@ const authorNameKey = (name) => String(name || '')
   .trim()
 
 async function loadAuthorProfiles(visibleAuthors) {
-  await Promise.all(visibleAuthors.map(async (author) => {
+  // Visible sob author er profile ekta batch request e (8 ta alada call na)
+  const todo = []
+  visibleAuthors.forEach((author) => {
     const key = authorNameKey(author.name)
     if (!key || author.profileLoaded || requestedAuthorProfiles.has(key)) return
     requestedAuthorProfiles.add(key)
     author.profileLoading = true
-    try {
-      Object.assign(author, await getAuthorProfile(author.name))
-    } catch {
-      author.profileError = true
-    } finally {
-      author.profileLoading = false
-      author.profileLoaded = true
-    }
-  }))
+    todo.push(author)
+  })
+  if (!todo.length) return
+  try {
+    const profiles = await getAuthorProfiles(todo.map((a) => a.name))
+    todo.forEach((author) => Object.assign(author, profiles[author.name] || {}))
+  } catch {
+    todo.forEach((author) => { author.profileError = true })
+  } finally {
+    todo.forEach((author) => { author.profileLoading = false; author.profileLoaded = true })
+  }
 }
 
 watch(paginatedAuthors, (visibleAuthors) => loadAuthorProfiles(visibleAuthors), { immediate: true })
@@ -122,6 +127,8 @@ async function loadAuthors() {
     const result = await getBooks({ per_page: 50 })
     authors.value = authorsFromBooks(result.data)
     authorPage.value = 1
+    // Top authors er prothom page er author-profile gulo ekhanei (watcher er age) ane, jate sequence e age sesh hoy
+    await loadAuthorProfiles(paginatedAuthors.value)
   } catch {
     say('Could not load authors. Please try again.')
   } finally {
@@ -159,14 +166,17 @@ const portalEsc = (e) => {
   selected.value = null
   selectedAuthor.value = null
 }
-onBeforeUnmount(() => { window.removeEventListener('keydown', portalEsc); clearTimeout(timer) })
+let gone = false
+onBeforeUnmount(() => { gone = true; window.removeEventListener('keydown', portalEsc); clearTimeout(timer) })
 onMounted(async () => {
   window.addEventListener('keydown', portalEsc)
-  loadAuthors()
+  // Sequence: 1) Top authors (books + author-profile) -> 2) Top books -> 3) Recommended -> 4) main book list -> 5) baki sob (notifications, requests, messages)
+  await loadAuthors()
   await nextTick()
-  loadTop()
-  loadMatches()
-  load()
+  await loadTop()
+  await loadMatches()
+  await load()
+  if (!gone) app.start()
 })
 
 const open = async (b) => {
@@ -210,6 +220,7 @@ async function wish(b) {
 </script>
 <template>
   <AppLayout
+    defer-app
     current="Home"
     v-model:search="search"
     search-placeholder="Search by title or author"

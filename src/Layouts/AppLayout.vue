@@ -8,8 +8,9 @@ import Header from '@/Components/Header.vue'
 import { app } from '@/stores/app'
 
 defineOptions({ inheritAttrs: false })
-defineProps({ current: { type: String, required: true }, title: { type: String, default: '' } })
-onMounted(() => app.start())
+// deferApp=true hole notifications/messages polling ekhane start hobe na; page nijei app.start() call korbe (Dashboard er sequence er jonno)
+const props = defineProps({ current: { type: String, required: true }, title: { type: String, default: '' }, deferApp: { type: Boolean, default: false } })
+onMounted(() => { if (!props.deferApp) app.start() })
 </script>
 
 <template>

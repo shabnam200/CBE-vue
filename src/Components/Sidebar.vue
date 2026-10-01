@@ -2,7 +2,6 @@
 import { computed, ref, watch } from 'vue'
 import Link from '@/Components/Link.vue'
 import ApplicationLogo from './ApplicationLogo.vue'
-import { auth } from '@/stores/auth'
 import { app } from '@/stores/app'
 
 defineProps({ currentRoute: { type: String, default: 'Home' } })
@@ -16,8 +15,7 @@ const base = [
   ['Notifications', '/notifications', 'M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0'],
   ['Profile', '/profile', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
 ]
-const admin = ['Admin', '/admin', 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3Z']
-const nav = computed(() => (auth.isAdmin.value ? [...base, admin] : base))
+const nav = computed(() => base)
 const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
 
 // Kon item e badge dekhabe: Messages -> unread message, Notifications -> unread notification

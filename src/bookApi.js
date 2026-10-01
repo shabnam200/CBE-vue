@@ -1,4 +1,4 @@
- // resources/js/bookApi.js
+// resources/js/bookApi.js
 // Book-related calls to the Laravel API (friend's endpoints). Everything else
 // (me, wishlist, notifications, requests) still comes from './api'.
 import { http } from './http'
@@ -152,6 +152,35 @@ export async function getMatches({ page = 1, per_page = 6 } = {}) {
   const res = toPage(await http.get('/matches', { params: { page, per_page } }))
   // backend row = { score, reasons, book } -> normalizeBook ke ulta kore dei
   return { ...res, data: res.data.map((m) => normalizeBook(m.book ?? m)).filter(Boolean) }
+}
+
+// GET /api/open-library/author-profiles?names[]=..  (onek author, 1 ta request)
+// Browser e 7 din cache kori: dwitiyo bar theke API call lagbe na, profile sathe sathe ashe.
+const PROFILE_CACHE_KEY = 'cbe_author_profiles_v1'
+const PROFILE_TTL = 7 * 24 * 60 * 60 * 1000
+const readProfileCache = () => { try { return JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY)) || {} } catch { return {} } }
+export async function getAuthorProfiles(names) {
+  if (USE_MOCK) return {}
+  const cache = readProfileCache()
+  const now = Date.now()
+  const result = {}
+  const missing = []
+  names.forEach((n) => {
+    const hit = cache[n]
+    if (hit && now - hit.t < PROFILE_TTL) result[n] = hit.p
+    else missing.push(n)
+  })
+  if (missing.length) {
+    const { data } = await http.get('/open-library/author-profiles', { params: { names: missing } })
+    const profiles = data.profiles || {}
+    missing.forEach((n) => {
+      const p = profiles[n] || {}
+      result[n] = p
+      if (p && Object.keys(p).length) cache[n] = { t: now, p } // khali/fail hole cache korbo na, porer bar abar try hobe
+    })
+    try { localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cache)) } catch { /* quota */ }
+  }
+  return result
 }
 
 export async function getAuthorProfile(name) {

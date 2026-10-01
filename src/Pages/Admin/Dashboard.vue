@@ -12,6 +12,9 @@ const router = useRouter()
 const me = computed(() => auth.user ?? (USE_MOCK ? { name: 'Admin', email: 'admin@example.com', role: 'admin' } : null))
 const isAdmin = computed(() => USE_MOCK || me.value?.role === 'admin')
 const goHome = () => router.push('/')
+// Profile menu (sidebar niche + mobile header): shudhu Log out
+const profileMenu = ref(null) // 'side' | 'top' | null
+const toggleProfile = (where) => (profileMenu.value = profileMenu.value === where ? null : where)
 
 /* ---------- Helpers ---------- */
 const OLD_BOOK_DAYS = 365
@@ -147,14 +150,16 @@ let searchTimer
 watch(() => users.q, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => loadUsers(1), 350) })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
-const statusTone = { approved: 'bg-brand-soft text-brand', active: 'bg-brand-soft text-brand', rejected: 'bg-amber-100 text-amber-800', suspended: 'bg-red-100 text-red-700' }
+const statusTone = { active: 'bg-brand-soft text-brand', suspended: 'bg-red-100 text-red-700' }
 
+// Admin approval lagbe na: member ra shorashori login kore. Admin shudhu suspend / reactivate / delete korte pare.
 async function changeStatus(u, status) {
+  const suspending = status === 'suspended'
   const ok = await ask({
-    title: `${status === 'approved' ? 'Approve' : 'Reject'} ${u.name}?`,
-    text: `This member will be marked as ${status}.`,
-    yes: status === 'approved' ? 'Approve member' : 'Reject member',
-    danger: status !== 'approved',
+    title: `${suspending ? 'Suspend' : 'Reactivate'} ${u.name}?`,
+    text: suspending ? 'This member will be logged out and cannot log in until you reactivate them.' : 'This member will be able to log in again.',
+    yes: suspending ? 'Suspend member' : 'Reactivate member',
+    danger: suspending,
   })
   if (!ok) return
   try {
@@ -238,12 +243,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </button>
       </nav>
 
-      <div class="flex items-center gap-3 border-t border-black/5 px-6 py-4">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white">{{ initials(me?.name) }}</div>
-        <div class="min-w-0">
-          <div class="truncate text-sm font-semibold">{{ me?.name }}</div>
-          <div class="truncate text-xs text-neutral-500">{{ me?.email }}</div>
+      <div class="relative border-t border-black/5" @keydown.esc="profileMenu = null">
+        <div v-if="profileMenu === 'side'" class="fixed inset-0 z-30" @click="profileMenu = null"></div>
+        <div v-if="profileMenu === 'side'" class="absolute bottom-full left-3 right-3 z-40 mb-2 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-sm shadow-2xl">
+          <router-link to="/logout" class="block rounded-lg px-3 py-2 text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" @click="profileMenu = null">Log out</router-link>
         </div>
+        <button type="button" class="relative z-40 flex w-full items-center gap-3 px-6 py-4 text-left transition-colors hover:bg-neutral-50" :class="profileMenu === 'side' ? 'bg-neutral-50' : ''" aria-haspopup="menu" :aria-expanded="profileMenu === 'side'" @click="toggleProfile('side')">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white">{{ initials(me?.name) }}</div>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-semibold">{{ me?.name }}</div>
+            <div class="truncate text-xs text-neutral-500">{{ me?.email }}</div>
+          </div>
+          <svg class="h-4 w-4 shrink-0 text-neutral-400 transition-transform" :class="profileMenu === 'side' ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 15l-6-6-6 6" /></svg>
+        </button>
       </div>
     </aside>
 
@@ -251,7 +263,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <div class="lg:hidden">
       <div class="flex items-center gap-2 border-b border-black/5 bg-white px-5 py-4 font-display text-lg font-semibold tracking-tight">
         <ApplicationLogo class="h-6 w-6 text-brand" /> Book Haven
-        <span class="ml-auto text-xs font-normal text-neutral-500">Admin</span>
+        <div class="relative ml-auto" @keydown.esc="profileMenu = null">
+          <div v-if="profileMenu === 'top'" class="fixed inset-0 z-30" @click="profileMenu = null"></div>
+          <button type="button" class="relative z-40 flex items-center gap-2 rounded-full border border-black/10 py-1 pl-1 pr-3 text-xs font-normal text-neutral-600" aria-haspopup="menu" :aria-expanded="profileMenu === 'top'" @click="toggleProfile('top')">
+            <span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-[11px] font-semibold text-white">{{ initials(me?.name) }}</span>Admin
+          </button>
+          <div v-if="profileMenu === 'top'" class="absolute right-0 z-40 mt-2 w-48 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-sm font-normal tracking-normal shadow-2xl">
+            <router-link to="/logout" class="block rounded-lg px-3 py-2 text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" @click="profileMenu = null">Log out</router-link>
+          </div>
+        </div>
       </div>
       <nav class="flex gap-1 overflow-x-auto border-b border-black/5 bg-white p-2" aria-label="Sections">
         <button v-for="t in tabs" :key="t.key" class="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium" :class="tab === t.key ? 'bg-brand-soft text-brand' : 'text-neutral-700'" @click="openTab(t.key)">
@@ -458,8 +478,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                   </td>
                   <td class="px-4 py-3">
                     <div v-if="u.role !== 'admin'" class="flex justify-end gap-1.5">
-                      <button class="rounded-lg bg-brand px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-dark" @click="changeStatus(u, 'approved')">Approve</button>
-                      <button class="rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:brightness-95" @click="changeStatus(u, 'rejected')">Reject</button>
+                      <button v-if="u.status === 'suspended'" class="rounded-lg bg-brand px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-dark" @click="changeStatus(u, 'active')">Reactivate</button>
+                      <button v-else class="rounded-lg bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-800 hover:brightness-95" @click="changeStatus(u, 'suspended')">Suspend</button>
                       <button class="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50" @click="removeUser(u)">Delete</button>
                     </div>
                   </td>

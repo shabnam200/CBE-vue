@@ -9,17 +9,15 @@ import ShelfSection from '../Components/ShelfSection.vue'
 import heroImg from '../assets/hero-books.jpg'
 import AppLayout from '../Layouts/AppLayout.vue'
 import { auth } from '../stores/auth'
+import { useLazyRow } from '../composables/useLazyRow'
+import { app } from '../stores/app'
 import { me as mockMe } from '../data/mock'
 import { sendExchangeRequest, toggleWishlist } from '../api'
-import { getBooks, getTopBooks, getBook, getMatches, getAuthorProfile, CONDITIONS, AVAILABILITY } from '../bookApi'
+import { getBooks, getTopBooks, getBook, getMatches, getAuthorProfiles, CONDITIONS, AVAILABILITY } from '../bookApi'
 import { USE_MOCK } from '../config'
 import { categories, authors as mockAuthors } from '../data/mock'
 
 const me = computed(() => ({ ...mockMe, ...(auth.user || {}) }))
-const topBooks = ref([])
-const topLoading = ref(true)
-const matches = ref([])
-const matchesLoading = ref(true)
 const list = ref({ data: [], current_page: 1, last_page: 1, total: 0 })
 const search = ref('')
 const requestedGenre = new URLSearchParams(window.location.search).get('genre')
@@ -61,20 +59,24 @@ const authorNameKey = (name) => String(name || '')
   .trim()
 
 async function loadAuthorProfiles(visibleAuthors) {
-  await Promise.all(visibleAuthors.map(async (author) => {
+  // Visible sob author er profile ekta batch request e (8 ta alada call na)
+  const todo = []
+  visibleAuthors.forEach((author) => {
     const key = authorNameKey(author.name)
     if (!key || author.profileLoaded || requestedAuthorProfiles.has(key)) return
     requestedAuthorProfiles.add(key)
     author.profileLoading = true
-    try {
-      Object.assign(author, await getAuthorProfile(author.name))
-    } catch {
-      author.profileError = true
-    } finally {
-      author.profileLoading = false
-      author.profileLoaded = true
-    }
-  }))
+    todo.push(author)
+  })
+  if (!todo.length) return
+  try {
+    const profiles = await getAuthorProfiles(todo.map((a) => a.name))
+    todo.forEach((author) => Object.assign(author, profiles[author.name] || {}))
+  } catch {
+    todo.forEach((author) => { author.profileError = true })
+  } finally {
+    todo.forEach((author) => { author.profileLoading = false; author.profileLoaded = true })
+  }
 }
 
 watch(paginatedAuthors, (visibleAuthors) => loadAuthorProfiles(visibleAuthors), { immediate: true })
@@ -85,6 +87,16 @@ function clearFilters() { search.value = ''; filters.value = { genre: '', condit
 // Hero banner
 const heroFailed = ref(false)
 const exploreNow = () => document.getElementById('top-books')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+// Top books + Recommended: shudhu screen e jotogulo dekha jay totogulor API call, baki scroll/Next e
+const topBooksSection = ref(null)
+const recommendedSection = ref(null)
+const topBooksRef = computed(() => topBooksSection.value?.track || null)
+const recommendedRef = computed(() => recommendedSection.value?.track || null)
+const { items: topBooks, loading: topLoading, loadingMore: topMoreLoading, loadMore: loadTop, onScroll: onTopScroll, next: topNext } =
+  useLazyRow(getTopBooks, topBooksRef, { onError: () => say('Could not load top books.') })
+const { items: matches, loading: matchesLoading, loadingMore: matchesMoreLoading, loadMore: loadMatches, onScroll: onMatchScroll, next: matchNext } =
+  useLazyRow(getMatches, recommendedRef)
 
 // Section icons (svg path)
 const ICONS = {
@@ -115,6 +127,8 @@ async function loadAuthors() {
     const result = await getBooks({ per_page: 50 })
     authors.value = authorsFromBooks(result.data)
     authorPage.value = 1
+    // Top authors er prothom page er author-profile gulo ekhanei (watcher er age) ane, jate sequence e age sesh hoy
+    await loadAuthorProfiles(paginatedAuthors.value)
   } catch {
     say('Could not load authors. Please try again.')
   } finally {
@@ -152,13 +166,17 @@ const portalEsc = (e) => {
   selected.value = null
   selectedAuthor.value = null
 }
-onBeforeUnmount(() => { window.removeEventListener('keydown', portalEsc); clearTimeout(timer) })
+let gone = false
+onBeforeUnmount(() => { gone = true; window.removeEventListener('keydown', portalEsc); clearTimeout(timer) })
 onMounted(async () => {
   window.addEventListener('keydown', portalEsc)
-  loadAuthors()
-  getTopBooks().then((r) => (topBooks.value = r)).catch(() => say('Could not load top books.')).finally(() => (topLoading.value = false))
-  getMatches().then((r) => (matches.value = r)).catch(() => {}).finally(() => (matchesLoading.value = false))
-  load()
+  // Sequence: 1) Top authors (books + author-profile) -> 2) Top books -> 3) Recommended -> 4) main book list -> 5) baki sob (notifications, requests, messages)
+  await loadAuthors()
+  await nextTick()
+  await loadTop()
+  await loadMatches()
+  await load()
+  if (!gone) app.start()
 })
 
 const open = async (b) => {
@@ -202,6 +220,7 @@ async function wish(b) {
 </script>
 <template>
   <AppLayout
+    defer-app
     current="Home"
     v-model:search="search"
     search-placeholder="Search by title or author"
@@ -284,16 +303,18 @@ async function wish(b) {
       </ShelfSection>
 
       <!-- Top books -->
-      <ShelfSection id="top-books" class="scroll-mt-20" title="Top Books" :icon="ICONS.book" :empty="!topLoading && !topBooks.length" style="--i: 2">
+      <ShelfSection ref="topBooksSection" id="top-books" class="scroll-mt-20" title="Top Books" :icon="ICONS.book" :empty="!topLoading && !topBooks.length" style="--i: 2" @scroll="onTopScroll">
         <template v-if="topLoading"><div v-for="i in 6" :key="i" class="w-32 shrink-0 sm:w-36"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div></template>
         <BookCard v-for="(b, i) in topBooks" :key="b.id" class="w-32 shrink-0 sm:w-36" :book="b" :index="i" :sub="b.author || b.genre" :wished="wished.has(b.id)" @open="open" @wish="wish" />
+        <div v-if="topMoreLoading && !topLoading" class="w-32 shrink-0 sm:w-36"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div>
         <template #empty><p class="rounded-xl bg-paper/60 py-8 text-center text-sm text-neutral-500">No top books yet.</p></template>
       </ShelfSection>
 
       <!-- Recommended -->
-      <ShelfSection title="Recommended for you" :icon="ICONS.star" filled :empty="!matchesLoading && !matches.length" style="--i: 3">
+      <ShelfSection ref="recommendedSection" title="Recommended for you" :icon="ICONS.star" filled :empty="!matchesLoading && !matches.length" style="--i: 3" @scroll="onMatchScroll">
         <template v-if="matchesLoading"><div v-for="i in 5" :key="i" class="w-32 shrink-0 sm:w-36"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div></template>
         <BookCard v-for="(b, i) in matches" :key="b.id" class="w-32 shrink-0 sm:w-36" :book="b" :index="i" :wished="wished.has(b.id)" @open="open" @wish="wish" />
+        <div v-if="matchesMoreLoading && !matchesLoading" class="w-32 shrink-0 sm:w-36"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div>
         <template #empty>
           <div class="flex flex-col items-center gap-1.5 rounded-xl bg-paper/60 px-4 py-8 text-center">
             <p class="text-sm font-medium text-ink">No recommendations yet</p>

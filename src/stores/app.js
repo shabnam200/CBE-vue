@@ -27,9 +27,12 @@ export const app = {
   get notes() { return state.notes },
 
   async refresh() {
-    const [n, c] = await Promise.allSettled([getAllNotifications(), getConversations()])
-    if (n.status === 'fulfilled') state.notes = n.value.data
-    if (c.status === 'fulfilled') state.convoUnread = Object.fromEntries(c.value.data.map((x) => [x.id, x.unread || 0]))
+    // Ekta ekta kore (parallel na): age notifications, tarpor requests + messages
+    try { state.notes = (await getAllNotifications()).data } catch { /* ignore */ }
+    try {
+      const c = await getConversations()
+      state.convoUnread = Object.fromEntries(c.data.map((x) => [x.id, x.unread || 0]))
+    } catch { /* ignore */ }
     state.loaded = true
   },
   start() {

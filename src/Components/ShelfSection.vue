@@ -5,6 +5,8 @@
 //   scrollable=false + #controls      -> nijer pager (jemon Top authors er 1/2)
 import { ref, computed, onMounted, onUpdated, onBeforeUnmount } from 'vue'
 
+const emit = defineEmits(['scroll'])
+
 defineProps({
   title: { type: String, required: true },
   icon: { type: String, default: '' },
@@ -47,6 +49,7 @@ onMounted(() => {
 })
 onUpdated(update)
 onBeforeUnmount(() => ro?.disconnect())
+defineExpose({ track })
 
 const arrowCls =
   'flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition-colors hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:pointer-events-none disabled:opacity-40'
@@ -72,7 +75,7 @@ const arrowCls =
       </slot>
     </div>
 
-    <div v-if="scrollable" v-show="!empty" ref="track" class="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-2 pt-1" :style="maskStyle" @scroll.passive="update">
+    <div v-if="scrollable" v-show="!empty" ref="track" class="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-2 pt-1" :style="maskStyle" @scroll.passive="(event) => { update(); emit('scroll', event) }">
       <slot />
     </div>
     <div v-else><slot /></div>

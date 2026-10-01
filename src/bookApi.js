@@ -1,4 +1,4 @@
- // resources/js/bookApi.js
+// resources/js/bookApi.js
 // Book-related calls to the Laravel API (friend's endpoints). Everything else
 // (me, wishlist, notifications, requests) still comes from './api'.
 import { http } from './http'
@@ -44,6 +44,7 @@ export function normalizeBook(b) {
   return {
     ...b,
     image_url: cover,
+    thumb_url: b.thumb_url ?? null, // backend er choto cached thumbnail (card er jonno)
     images,
     available_copies: b.available_copies ?? b.copies_available ?? b.copies ?? null,
     owner: owner ? { ...owner, reputation_score: owner.reputation_score ?? owner.rating ?? null } : null,
@@ -71,6 +72,11 @@ function toPage(res) {
     total: meta.total ?? rows.length,
   }
 }
+
+const paged = (list, page, per = 8) => ({
+  data: list.slice((page - 1) * per, page * per),
+  current_page: page, last_page: Math.max(1, Math.ceil(list.length / per)), total: list.length,
+})
 
 const clean = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== '' && v != null && v !== false))
 
@@ -116,14 +122,14 @@ export async function getBooks({ search, genre, condition, availability_type, ci
   return toPage(res)
 }
 
-// GET /api/books/top
-export async function getTopBooks() {
+// GET /api/books/top?page=&per_page=  (paginated: shudhu dorkar moto boi ashe)
+export async function getTopBooks({ page = 1, per_page = 6 } = {}) {
   if (USE_MOCK) {
     await wait()
     const top = ['Atomic Habits', 'The Alchemist', 'Sapiens', 'The Hobbit', 'Deep Work', 'Zero to One']
-    return mockBooks.filter((b) => top.includes(b.title))
+    return paged(mockBooks.filter((b) => top.includes(b.title)), page, per_page)
   }
-  return rowsOf(await http.get('/books/top')).map(normalizeBook)
+  return toPage(await http.get('/books/top', { params: { page, per_page } }))
 }
 
 // GET /api/books/{id}
@@ -136,22 +142,51 @@ export async function getBook(id) {
   return normalizeBook({ ...(p?.data ?? p?.book ?? p), available_copies: p?.available_copies }) // backend { book, available_copies }
 }
 
+// GET /api/matches?page=&per_page=  (paginated)
+export async function getMatches({ page = 1, per_page = 6 } = {}) {
+  if (USE_MOCK) {
+    await wait()
+    const match = ['Sapiens', 'The Hobbit', 'Milk and Honey']
+    return paged(mockBooks.filter((b) => match.includes(b.title)), page, per_page)
+  }
+  const res = toPage(await http.get('/matches', { params: { page, per_page } }))
+  // backend row = { score, reasons, book } -> normalizeBook ke ulta kore dei
+  return { ...res, data: res.data.map((m) => normalizeBook(m.book ?? m)).filter(Boolean) }
+}
+
+// GET /api/open-library/author-profiles?names[]=..  (onek author, 1 ta request)
+// Browser e 7 din cache kori: dwitiyo bar theke API call lagbe na, profile sathe sathe ashe.
+const PROFILE_CACHE_KEY = 'cbe_author_profiles_v1'
+const PROFILE_TTL = 7 * 24 * 60 * 60 * 1000
+const readProfileCache = () => { try { return JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY)) || {} } catch { return {} } }
+export async function getAuthorProfiles(names) {
+  if (USE_MOCK) return {}
+  const cache = readProfileCache()
+  const now = Date.now()
+  const result = {}
+  const missing = []
+  names.forEach((n) => {
+    const hit = cache[n]
+    if (hit && now - hit.t < PROFILE_TTL) result[n] = hit.p
+    else missing.push(n)
+  })
+  if (missing.length) {
+    const { data } = await http.get('/open-library/author-profiles', { params: { names: missing } })
+    const profiles = data.profiles || {}
+    missing.forEach((n) => {
+      const p = profiles[n] || {}
+      result[n] = p
+      if (p && Object.keys(p).length) cache[n] = { t: now, p } // khali/fail hole cache korbo na, porer bar abar try hobe
+    })
+    try { localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cache)) } catch { /* quota */ }
+  }
+  return result
+}
+
 export async function getAuthorProfile(name) {
   if (USE_MOCK) return {}
   const { data } = await http.get('/open-library/author-profile', { params: { name } })
   return data.profile || {}
-}
-
-// GET /api/matches
-export async function getMatches() {
-  if (USE_MOCK) {
-    await wait()
-    const match = ['Sapiens', 'The Hobbit', 'Milk and Honey']
-    return mockBooks.filter((b) => match.includes(b.title))
-  }
-  return rowsOf(await http.get('/matches'))
-    .map((m) => normalizeBook(m.book ?? m.matched_book ?? m.available_book ?? m))
-    .filter(Boolean)
 }
 
 /* ------------------------------------------------------------------ *
@@ -160,10 +195,6 @@ export async function getMatches() {
 
 // ---- in-memory mock for My Books (mock mode e ei data reload dile reset hoy) ----
 let myMock = mockBooks.filter((b) => b.user_id === 2).map((b) => ({ ...b }))
-const paged = (list, page, per = 8) => ({
-  data: list.slice((page - 1) * per, page * per),
-  current_page: page, last_page: Math.max(1, Math.ceil(list.length / per)), total: list.length,
-})
 const fromForm = (fd) => Object.fromEntries([...fd.entries()].filter(([k]) => k !== '_method' && !k.endsWith('[]')))
 const mockImage = (v) => (v instanceof File ? URL.createObjectURL(v) : null)
 

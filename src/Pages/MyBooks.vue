@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import BookCover from '@/Components/BookCover.vue'
 import { categories } from '@/data/mock'
+import { toWebp } from '@/utils/image'
 import { getMyBooks, storeBook, updateBook, deleteBook, apiError, CONDITIONS, AVAILABILITY } from '@/bookApi'
 
 const myBooks = ref([])
@@ -89,12 +90,20 @@ function closeModal() {
 }
 
 let pid = 0
-function addFiles(list) {
+const compressing = ref(false)
+async function addFiles(list) {
   const files = [...(list || [])].filter((f) => f.type.startsWith('image/'))
   if (!files.length) return
   const room = MAX_PHOTOS - photos.value.length
   if (files.length > room) say(`You can add up to ${MAX_PHOTOS} photos.`)
-  files.slice(0, Math.max(room, 0)).forEach((file) => photos.value.push({ id: `new-${++pid}`, url: URL.createObjectURL(file), file }))
+  compressing.value = true
+  try {
+    // select korar sathe sathe WebP te compress (preview o compressed file theke)
+    const ready = await Promise.all(files.slice(0, Math.max(room, 0)).map((f) => toWebp(f)))
+    ready.forEach((file) => photos.value.push({ id: `new-${++pid}`, url: URL.createObjectURL(file), file }))
+  } finally {
+    compressing.value = false
+  }
 }
 function onFiles(e) { addFiles(e.target.files); e.target.value = '' }
 function onDrop(e) { dragging.value = false; addFiles(e.dataTransfer?.files) }
@@ -106,6 +115,7 @@ function makeCover(i) { const [p] = photos.value.splice(i, 1); photos.value.unsh
 
 async function save() {
   formError.value = ''
+  if (compressing.value) { formError.value = 'Photos are still being optimised, please wait a moment.'; return }
   if (!form.value.title.trim() || !form.value.author.trim()) {
     formError.value = 'Please fill in the title and author.'
     return
@@ -271,7 +281,7 @@ const label = 'mb-1 block text-xs font-semibold text-neutral-600'
               <p v-if="formError" role="alert" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{{ formError }}</p>
               <div class="flex justify-end gap-3 pt-2">
                 <button type="button" class="rounded-lg border border-black/10 px-4 py-2 text-sm hover:bg-neutral-100" @click="closeModal">Cancel</button>
-                <button type="submit" :disabled="saving" class="rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white transition-all hover:bg-brand-dark active:scale-95 disabled:opacity-60">{{ saving ? 'Saving…' : editing ? 'Save changes' : 'Save book' }}</button>
+                <button type="submit" :disabled="saving || compressing" class="rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white transition-all hover:bg-brand-dark active:scale-95 disabled:opacity-60">{{ saving ? 'Saving…' : compressing ? 'Optimising photos…' : editing ? 'Save changes' : 'Save book' }}</button>
               </div>
             </form>
           </div>

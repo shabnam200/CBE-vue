@@ -66,10 +66,10 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
   <div class="sticky top-0 z-40 isolate flex-none bg-white shadow-sm">
     <!-- 1) Top bar -->
     <header class="border-b border-black/5 bg-white/90">
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-6">
+    <div class="flex min-h-[4.25rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-6">
       <router-link to="/dashboard" class="md:hidden" aria-label="Home"><ApplicationLogo class="h-8 w-8 text-brand" /></router-link>
 
-      <div v-if="title" class="min-w-0 max-w-[16rem] shrink-0 sm:mr-2">
+      <div v-if="title" class="w-40 min-w-0 shrink-0 sm:mr-2">
         <h1 class="truncate font-display text-lg font-semibold leading-tight text-brand animate-fade-in">{{ title }}</h1>
         <p v-if="subtitle" class="hidden truncate text-xs text-neutral-500 lg:block">{{ subtitle }}</p>
       </div>
@@ -163,9 +163,13 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
         Near me
       </label>
 
-      <Transition name="fade">
-        <button v-if="activeFilters || nearMe" type="button" class="shrink-0 px-2 text-sm font-medium text-brand underline-offset-4 hover:underline" @click="clearFilters">Clear filters</button>
-      </Transition>
+      <button v-if="activeFilters || nearMe" type="button" class="shrink-0 px-2 text-sm font-medium text-brand underline-offset-4 hover:underline" @click="clearFilters">Clear filters</button>
+      <div v-if="$slots['filter-actions']" class="flex shrink-0 items-center pl-1">
+        <slot name="filter-actions" />
+      </div>
+      <div v-if="$slots['filter-actions-trailing']" class="ml-auto flex shrink-0 items-center pl-2">
+        <slot name="filter-actions-trailing" />
+      </div>
     </div>
   </div>
 </template>

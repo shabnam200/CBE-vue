@@ -19,6 +19,8 @@ onMounted(() => app.start())
     <div class="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto">
       <Header v-bind="$attrs" :title="title || current">
         <template v-if="$slots.actions" #actions><slot name="actions" /></template>
+        <template v-if="$slots['filter-actions']" #filter-actions><slot name="filter-actions" /></template>
+        <template v-if="$slots['filter-actions-trailing']" #filter-actions-trailing><slot name="filter-actions-trailing" /></template>
       </Header>
       <main class="flex min-w-0 flex-1 flex-col gap-4 p-4 pb-24 md:p-6 md:pb-6 animate-fade-up">
         <slot />

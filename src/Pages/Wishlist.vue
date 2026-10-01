@@ -7,7 +7,7 @@ import Toast from '@/Components/Toast.vue'
 import { useToast } from '@/composables/useToast'
 import { getWishlist, removeFromWishlist as removeFromWishlistApi } from '@/api/modules'
 import { sendExchangeRequest } from '@/api'
-import { CONDITIONS } from '@/bookApi'
+import { apiError, CONDITIONS } from '@/bookApi'
 
 const { toast, say } = useToast()
 const requesting = ref(null)
@@ -23,7 +23,7 @@ const filterDefs = [
 const slug = (s) => String(s || '').toLowerCase().replace(/\s+/g, '_')
 const currentSlide = ref(0)
 watch([searchQuery, filters], () => (currentSlide.value = 0), { deep: true })
-const itemsPerSlide = 4
+const itemsPerPage = 12
 
 const fetchWishlistData = async () => {
   isLoading.value = true
@@ -50,11 +50,11 @@ const filteredBooks = computed(() => {
   })
 })
 
-const totalPages = computed(() => Math.ceil(filteredBooks.value.length / itemsPerSlide) || 1)
+const totalPages = computed(() => Math.ceil(filteredBooks.value.length / itemsPerPage) || 1)
 
 const paginatedBooks = computed(() => {
-  const start = currentSlide.value * itemsPerSlide
-  return filteredBooks.value.slice(start, start + itemsPerSlide)
+  const start = currentSlide.value * itemsPerPage
+  return filteredBooks.value.slice(start, start + itemsPerPage)
 })
 
 const nextSlide = () => {
@@ -90,9 +90,10 @@ const requestBook = async (book) => {
   requesting.value = book.id
   try {
     await sendExchangeRequest(book.id)
+    book.available = false
     say(`Request sent to ${book.owner?.name || 'the owner'}.`)
-  } catch {
-    say('Could not send the request. Please try again.')
+  } catch (error) {
+    say(apiError(error, 'Could not send the request. Please try again.'))
   } finally {
     requesting.value = null
   }
@@ -109,18 +110,13 @@ const requestBook = async (book) => {
     :filters="filterDefs"
     v-model:filter-values="filters"
   >
-    <template #actions>
-      <span class="hidden rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand sm:inline">{{ filteredBooks.length }} saved</span>
-      <div class="flex items-center gap-1 rounded-xl border border-black/10 bg-white p-1">
-        <button type="button" class="rounded-lg px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-brand-soft hover:text-brand" @click="prevSlide">Prev</button>
-        <span class="px-1 text-xs font-medium text-neutral-400">{{ currentSlide + 1 }} / {{ totalPages }}</span>
-        <button type="button" class="rounded-lg px-2.5 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:bg-brand-soft hover:text-brand" @click="nextSlide">Next</button>
-      </div>
+    <template #filter-actions>
+      <span class="rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand">{{ filteredBooks.length }} saved</span>
     </template>
 
     <!-- Loading -->
-    <div v-if="isLoading" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      <div v-for="i in 4" :key="i" class="overflow-hidden rounded-2xl border border-black/5 bg-white"><div class="skeleton h-64"></div><div class="space-y-2 p-4"><div class="skeleton h-3 w-16 rounded"></div><div class="skeleton h-4 w-32 rounded"></div><div class="skeleton h-3 w-24 rounded"></div></div></div>
+    <div v-if="isLoading" class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+      <div v-for="i in 6" :key="i"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div>
     </div>
 
     <!-- Empty -->
@@ -131,28 +127,40 @@ const requestBook = async (book) => {
     </div>
 
     <!-- Cards -->
-    <TransitionGroup v-else tag="div" name="grid-list" class="relative grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      <div v-for="(book, i) in paginatedBooks" :key="book.id" class="reveal lift group flex flex-col justify-between overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm" :style="{ '--i': i }">
-        <div>
-          <div class="relative h-64 overflow-hidden bg-neutral-100">
-            <div class="h-full w-full transition duration-500 group-hover:scale-105"><BookCover :book="book" /></div>
-            <span class="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold uppercase text-neutral-800 shadow-sm backdrop-blur-sm">{{ book.availability_type }}</span>
-            <span :class="book.available ? 'bg-emerald-600' : 'bg-amber-600'" class="absolute bottom-3 left-3 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">{{ book.available ? 'Available' : 'Requested Out' }}</span>
-          </div>
-          <div class="space-y-1 p-4">
-            <span class="text-xs font-semibold uppercase tracking-wider text-brand">{{ book.genre }}</span>
-            <h3 class="truncate text-base font-bold text-neutral-900">{{ book.title }}</h3>
-            <p class="text-xs font-medium text-neutral-500">{{ book.author }}</p>
-            <p class="pt-1 text-xs text-neutral-400">Condition: <span class="font-semibold text-neutral-700">{{ book.condition }}</span></p>
-            <p v-if="book.owner" class="text-[11px] text-neutral-400">Owner: <span class="font-medium text-neutral-600">{{ book.owner.name }}</span> ({{ book.owner.city }})</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 p-4 pt-0">
-          <button :disabled="!book.available || requesting === book.id" class="flex-1 rounded-xl bg-brand py-2.5 text-xs font-semibold text-white transition-all hover:bg-brand-dark active:scale-[.97] disabled:bg-neutral-200" @click="requestBook(book)">{{ requesting === book.id ? 'Sending...' : 'Request Book' }}</button>
-          <button class="rounded-xl border border-neutral-200 px-3 py-2.5 text-xs text-neutral-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600" title="Remove from wishlist" aria-label="Remove from wishlist" @click="removeFromWishlist(book.id)">🗑️</button>
+    <section v-else class="space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-display text-base font-semibold text-ink">Saved books</h2>
+        <div v-if="totalPages > 1" class="flex items-center gap-2">
+          <span class="text-xs tabular-nums text-neutral-500">{{ currentSlide + 1 }} / {{ totalPages }}</span>
+          <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-700 shadow-sm transition-colors hover:bg-brand-soft hover:text-brand disabled:opacity-40" :disabled="currentSlide === 0" aria-label="Previous saved books" @click="prevSlide">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          </button>
+          <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-700 shadow-sm transition-colors hover:bg-brand-soft hover:text-brand disabled:opacity-40" :disabled="currentSlide >= totalPages - 1" aria-label="Next saved books" @click="nextSlide">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+          </button>
         </div>
       </div>
-    </TransitionGroup>
+
+      <TransitionGroup tag="div" name="grid-list" class="relative grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <article v-for="(book, i) in paginatedBooks" :key="book.id" class="reveal lift group min-w-0" :style="{ '--i': Math.min(i, 12) }">
+          <div class="relative aspect-[3/4] overflow-hidden rounded-xl border border-black/10 bg-neutral-100 shadow-sm transition-shadow duration-300 group-hover:shadow-lg">
+            <div class="h-full w-full transition-transform duration-500 group-hover:scale-105"><BookCover :book="book" /></div>
+            <span class="absolute left-1.5 top-1.5 rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-brand shadow-sm">{{ book.availability_type }}</span>
+            <span :class="book.available ? 'bg-emerald-700' : 'bg-amber-600'" class="absolute bottom-1.5 left-1.5 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">{{ book.available ? 'Available' : 'Requested' }}</span>
+          </div>
+          <p class="mt-1.5 truncate text-xs font-medium">{{ book.title }}</p>
+          <p class="truncate text-[10px] text-neutral-500">{{ book.author }}</p>
+          <p class="mt-1 truncate text-[10px] text-neutral-500">{{ book.genre }} · {{ book.condition }}</p>
+          <p v-if="book.owner" class="truncate text-[10px] text-neutral-500">{{ book.owner.name }} · {{ book.owner.city }}</p>
+          <div class="mt-2 flex gap-2">
+            <button :disabled="!book.available || requesting === book.id" class="flex-1 rounded-lg bg-brand py-1.5 text-xs font-semibold text-white transition-all hover:bg-brand-dark active:scale-[.97] disabled:bg-neutral-200" @click="requestBook(book)">{{ requesting === book.id ? 'Sending…' : book.available ? 'Request book' : 'Requested' }}</button>
+            <button class="flex h-8 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600" title="Remove from wishlist" aria-label="Remove from wishlist" @click="removeFromWishlist(book.id)">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6" /></svg>
+            </button>
+          </div>
+        </article>
+      </TransitionGroup>
+    </section>
 
     <template #overlay><Toast :message="toast" /></template>
   </AppLayout>

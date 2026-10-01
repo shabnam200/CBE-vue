@@ -141,7 +141,12 @@ async function load(page = 1) {
   }
 }
 let timer
-watch([search, filters, nearMe], () => { clearTimeout(timer); timer = setTimeout(() => load(1), 300) }, { deep: true })
+watch([search, filters, nearMe], () => {
+  clearTimeout(timer)
+  reqId++
+  loading.value = true
+  timer = setTimeout(() => load(1), 300)
+}, { deep: true })
 const portalEsc = (e) => {
   if (e.key !== 'Escape') return
   selected.value = null
@@ -245,7 +250,7 @@ async function wish(b) {
         <p class="text-xs text-neutral-500">Try a different title, genre or clear the filters.</p>
       </div>
       <div v-else class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        <BookCard v-for="(b, i) in list.data" :key="b.id" :book="b" :index="i" :wished="wished.has(b.id)" @open="open" @wish="wish" />
+        <BookCard v-for="(b, i) in list.data" :key="b.id" :book="b" :index="i" :animate="false" :wished="wished.has(b.id)" @open="open" @wish="wish" />
       </div>
     </section>
 

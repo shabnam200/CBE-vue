@@ -124,9 +124,14 @@ async function save() {
   ;['title', 'author', 'genre', 'condition', 'availability_type'].forEach((k) => fd.append(k, form.value[k]))
   // Multiple photos: images[] = notun file, keep_images[] = ager je gulo rakhbo. `image` = cover (purono backend er jonno)
   const added = photos.value.filter((p) => p.file)
+  const kept = photos.value.filter((p) => !p.file)
   added.forEach((p) => fd.append('images[]', p.file))
   if (added.length) fd.append('image', added[0].file)
-  photos.value.filter((p) => !p.file).forEach((p) => fd.append('keep_images[]', p.url))
+  kept.forEach((p) => fd.append('keep_images[]', p.url))
+  photos.value.forEach((p) => {
+    const source = p.file ? `upload:${added.indexOf(p)}` : `keep:${kept.indexOf(p)}`
+    fd.append('photo_order[]', source)
+  })
 
   saving.value = true
   try {
@@ -176,34 +181,36 @@ const label = 'mb-1 block text-xs font-semibold text-neutral-600'
   <AppLayout
     current="My Books"
     title="My Books"
-    :subtitle="!loading && meta.total ? `${meta.total} listed` : 'Books you share with the community.'"
     v-model:search="search"
     search-placeholder="Search my books"
     :filters="filterDefs"
     v-model:filter-values="filters"
   >
-    <template #actions>
-      <button type="button" class="flex items-center gap-1.5 rounded-xl bg-brand px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-brand-dark active:scale-95" @click="openAdd">
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg><span class="hidden sm:inline">Add New Book</span><span class="sm:hidden">Add</span>
+    <template #filter-actions>
+      <span v-if="!loading" class="rounded-full bg-brand-soft px-2.5 py-1.5 text-[11px] font-semibold text-brand">{{ meta.total }} listed</span>
+    </template>
+    <template #filter-actions-trailing>
+      <button type="button" class="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-brand px-3 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-md active:translate-y-0 active:scale-[.98]" @click="openAdd">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg><span class="hidden sm:inline">Add New Book</span><span class="sm:hidden">Add</span>
       </button>
     </template>
 
     <section class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-8">
-      <div v-if="loading" class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div v-for="i in 4" :key="i"><div class="skeleton aspect-[3/4] rounded-lg"></div><div class="skeleton mt-2 h-3 w-24 rounded"></div></div>
+      <div v-if="loading" class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <div v-for="i in 6" :key="i"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div>
       </div>
 
-      <TransitionGroup v-else-if="visibleBooks.length" tag="div" name="grid-list" class="relative grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        <article v-for="(b, i) in visibleBooks" :key="b.id" class="reveal lift group flex flex-col rounded-xl border border-black/10 bg-white p-3 shadow-sm" :style="{ '--i': i }">
-          <div class="relative aspect-[3/4] overflow-hidden rounded-lg bg-neutral-100">
+      <TransitionGroup v-else-if="visibleBooks.length" tag="div" name="grid-list" class="relative grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <article v-for="(b, i) in visibleBooks" :key="b.id" class="reveal lift group min-w-0" :style="{ '--i': Math.min(i, 12) }">
+          <div class="relative aspect-[3/4] overflow-hidden rounded-xl border border-black/10 bg-neutral-100 shadow-sm transition-shadow duration-300 group-hover:shadow-lg">
             <div class="h-full w-full transition-transform duration-500 group-hover:scale-105"><BookCover :book="b" /></div>
-            <span class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-brand shadow-sm">{{ badge[b.availability_type] }}</span>
-            <span v-if="b.images?.length > 1" class="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-white"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>{{ b.images.length }}</span>
+            <span class="absolute left-1.5 top-1.5 rounded-full bg-white/90 px-1.5 py-0.5 text-[8px] font-semibold text-brand shadow-sm">{{ badge[b.availability_type] }}</span>
+            <span v-if="b.images?.length > 1" class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-ink/70 px-1.5 py-0.5 text-[9px] font-medium text-white"><svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>{{ b.images.length }}</span>
           </div>
-          <p class="mt-2 truncate text-sm font-medium">{{ b.title }}</p>
-          <p class="truncate text-xs text-neutral-500">by {{ b.author }}</p>
-          <div class="mt-3 flex gap-2">
-            <button type="button" class="flex-1 rounded-lg border border-black/10 py-1.5 text-xs font-medium transition-colors hover:bg-brand-soft hover:text-brand" @click="openEdit(b)">Edit</button>
+          <p class="mt-1.5 truncate text-xs font-medium">{{ b.title }}</p>
+          <p class="truncate text-[10px] text-neutral-500">by {{ b.author }}</p>
+          <div class="mt-2 flex gap-2">
+            <button type="button" class="flex-1 rounded-lg border border-black/10 py-1.5 text-xs font-medium transition-colors hover:border-brand/30 hover:bg-brand-soft hover:text-brand" @click="openEdit(b)">Edit</button>
             <button type="button" class="flex-1 rounded-lg border border-red-200 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50" @click="deleting = b">Delete</button>
           </div>
         </article>

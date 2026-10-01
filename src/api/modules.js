@@ -313,8 +313,21 @@ export async function deleteNotification(id) {
 // GET /api/wishlists  ->  { data: [book + { available: boolean }] }
 export async function getWishlist() {
   if (!USE_MOCK) {
-    const rows = (await http.get('/wishlist')).data
-    return { data: rows.filter((w) => w.book).map((w) => ({ ...normalizeBook(w.book), available: true })) }
+    const [rows, sentRequests] = await Promise.all([
+      http.get('/wishlist').then((response) => response.data),
+      allPages('/exchange-requests', { type: 'sent' }),
+    ])
+    const activeBookIds = new Set(
+      sentRequests
+        .filter((request) => ['pending', 'accepted'].includes(request.status))
+        .map((request) => request.book_id),
+    )
+    return {
+      data: rows.filter((item) => item.book).map((item) => {
+        const book = normalizeBook(item.book)
+        return { ...book, available: !activeBookIds.has(book.id) }
+      }),
+    }
   }
   // ---- REAL API ----
   // const res = await http.get('/wishlists')

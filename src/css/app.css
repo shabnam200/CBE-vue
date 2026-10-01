@@ -27,7 +27,6 @@
 .list-enter-from { opacity: 0; transform: translateY(14px) scale(.97); }
 .list-leave-to { opacity: 0; transform: translateX(24px); }
 .list-leave-active { position: absolute; width: 100%; }
-.grid-list-leave-active { position: absolute; }
 .grid-list-enter-active, .grid-list-leave-active, .grid-list-move { transition: all .35s cubic-bezier(.22,1,.36,1); }
 .grid-list-enter-from, .grid-list-leave-to { opacity: 0; transform: scale(.9); }
 

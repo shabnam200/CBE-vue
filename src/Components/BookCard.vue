@@ -1,12 +1,12 @@
 <script setup>
 // Dashboard er boi card: hover lift, badge, photo count, heart (quick wishlist)
 import BookCover from './BookCover.vue'
-defineProps({ book: { type: Object, required: true }, wished: { type: Boolean, default: false }, index: { type: Number, default: 0 }, sub: { type: String, default: '' } })
+defineProps({ book: { type: Object, required: true }, wished: { type: Boolean, default: false }, index: { type: Number, default: 0 }, sub: { type: String, default: '' }, animate: { type: Boolean, default: true } })
 defineEmits(['open', 'wish'])
 const badge = { exchange: 'Exchange', donate: 'Free', lend: 'Lend' }
 </script>
 <template>
-  <div class="reveal group relative text-left" :style="{ '--i': index }">
+  <div :class="['group relative min-w-0 text-left', animate ? 'reveal' : 'animate-fade-in']" :style="animate ? { '--i': index } : undefined">
     <button type="button" class="block w-full text-left" @click="$emit('open', book)">
       <div class="relative aspect-[3/4] overflow-hidden rounded-xl border border-black/10 bg-neutral-100 shadow-sm transition-all duration-300 group-hover:-translate-y-1.5 group-hover:shadow-lg">
         <div class="h-full w-full transition-transform duration-500 group-hover:scale-105"><BookCover :book="book" small /></div>

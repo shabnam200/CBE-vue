@@ -1,14 +1,11 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Link from '@/Components/Link.vue'
 import ApplicationLogo from './ApplicationLogo.vue'
 import { auth } from '@/stores/auth'
 import { app } from '@/stores/app'
 
 defineProps({ currentRoute: { type: String, default: 'Home' } })
-
-const isCollapsed = ref(false)
-const toggleSidebar = () => { isCollapsed.value = !isCollapsed.value }
 
 const base = [
   ['Home', '/dashboard', 'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
@@ -23,54 +20,94 @@ const admin = ['Admin', '/admin', 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8
 const nav = computed(() => (auth.isAdmin.value ? [...base, admin] : base))
 const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
 
+// Kon item e badge dekhabe: Messages -> unread message, Notifications -> unread notification
 const badgeOf = (t) => (t === 'Messages' ? app.unreadMessages.value : t === 'Notifications' ? app.unreadNotes.value : 0)
 const fmt = (n) => (n > 9 ? '9+' : n)
+
+// Sidebar shrink/expand — choice browser e mone thake
+const STORAGE_KEY = 'bookhaven:sidebar-collapsed'
+const collapsed = ref(false)
+try { collapsed.value = localStorage.getItem(STORAGE_KEY) === '1' } catch { /* ignore */ }
+watch(collapsed, (v) => { try { localStorage.setItem(STORAGE_KEY, v ? '1' : '0') } catch { /* ignore */ } })
+
+const itemCls = 'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[15px] transition-all duration-200'
+const labelCls = 'min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200'
+const tipCls = 'pointer-events-none absolute left-full top-1/2 z-50 ml-4 -translate-y-1/2 whitespace-nowrap rounded-md bg-ink px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100'
 </script>
 
 <template>
-  <aside class="hidden shrink-0 transition-all duration-300 md:block" :class="isCollapsed ? 'w-20' : 'w-64'">
-    <div class="sticky top-0 flex h-screen flex-col border-r border-black/5 bg-white p-3">
-      
-      <!-- Top Row: Logo & Collapse Toggle Button -->
-      <div class="flex items-center px-2 py-2" :class="isCollapsed ? 'flex-col gap-3' : 'justify-between'">
-        <Link href="/" class="group flex items-center gap-2 overflow-hidden whitespace-nowrap text-ink">
-          <ApplicationLogo class="h-6 w-6 shrink-0 text-brand transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
-          <span v-if="!isCollapsed" class="text-sm font-semibold font-display">Book Haven</span>
-        </Link>
-        <button @click="toggleSidebar" class="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition-colors" :title="isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'">
-          <svg class="h-5 w-5 transition-transform duration-300" :class="isCollapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
-        </button>
-      </div>
+  <aside class="relative z-40 hidden shrink-0 transition-[width] duration-300 ease-out md:block" :class="collapsed ? 'w-[4.5rem]' : 'w-64'">
+    <div class="sticky top-0 flex h-screen flex-col border-r border-black/5 bg-white px-3 py-4">
+      <!-- Collapse / expand button (sidebar er dhar e) -->
+      <button
+        type="button"
+        class="absolute -right-3 top-7 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-500 shadow-sm transition-colors hover:border-brand/40 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :aria-expanded="!collapsed"
+        @click="collapsed = !collapsed"
+      >
+        <svg class="h-3.5 w-3.5 transition-transform duration-300" :class="collapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      </button>
 
-      <!-- Navigation Items -->
-      <nav class="mt-4 flex-1 space-y-1 text-sm overflow-y-auto no-scrollbar">
+      <!-- Logo -->
+      <Link href="/" class="group flex items-center gap-3 whitespace-nowrap rounded-xl px-1.5 py-1">
+        <ApplicationLogo class="h-9 w-9 shrink-0 text-brand transition-transform duration-300 group-hover:scale-105" />
+        <span class="min-w-0 overflow-hidden transition-opacity duration-200" :class="collapsed ? 'opacity-0' : 'opacity-100'">
+          <span class="block font-display text-xl font-bold leading-none text-ink">Book Haven</span>
+          <span class="mt-1 block text-[11px] text-neutral-500">More Books. More Worlds.</span>
+        </span>
+      </Link>
+
+      <!-- Menu -->
+      <nav class="mt-6 space-y-1" aria-label="Main">
         <Link
           v-for="([t, h, d], i) in nav"
           :key="t"
           :href="h"
-          class="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 hover:bg-brand-soft"
-          :class="[t === currentRoute ? 'bg-brand-soft font-medium text-brand' : 'text-neutral-600', isCollapsed ? 'justify-center px-0' : '']"
-          :title="isCollapsed ? t : ''"
+          :class="[itemCls, 'animate-fade-in', t === currentRoute ? 'bg-brand font-medium text-white shadow-md shadow-brand/25' : 'text-neutral-700 hover:bg-brand-soft hover:text-brand']"
+          :style="{ animationDelay: i * 40 + 'ms' }"
         >
-          <svg class="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
-          <span v-if="!isCollapsed" class="flex-1 truncate">{{ t }}</span>
-          
-          <!-- Badge -->
-          <span v-if="badgeOf(t)" :class="isCollapsed ? 'absolute right-1 top-1' : ''" class="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white shadow-sm">
-            {{ fmt(badgeOf(t)) }}
+          <span class="relative shrink-0">
+            <svg class="h-5 w-5 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
+            <!-- Collapsed hole icon er kone chhoto badge -->
+            <span v-if="collapsed && badgeOf(t)" class="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold text-white ring-2 ring-white animate-pop">{{ fmt(badgeOf(t)) }}</span>
           </span>
+          <span :class="[labelCls, collapsed ? 'opacity-0' : 'opacity-100']">{{ t }}</span>
+          <Transition name="fade">
+            <span v-if="!collapsed && badgeOf(t)" class="flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold animate-pop" :class="t === currentRoute ? 'bg-white text-brand' : 'bg-brand text-white'" :aria-label="`${badgeOf(t)} unread`">{{ fmt(badgeOf(t)) }}</span>
+          </Transition>
+          <!-- Collapsed hole hover e naam dekhabe -->
+          <span v-if="collapsed" role="tooltip" :class="tipCls">{{ t }}<template v-if="badgeOf(t)"> · {{ badgeOf(t) }}</template></span>
         </Link>
       </nav>
 
-      <!-- Logout -->
-      <Link href="/logout" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" :class="isCollapsed ? 'justify-center' : ''" :title="isCollapsed ? 'Log out' : ''">
-        <svg class="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="logoutIcon" /></svg>
-        <span v-if="!isCollapsed">Log out</span>
-      </Link>
+      <div class="mt-auto">
+        <!-- Decorative quote (collapsed ba chhoto screen e lukano) -->
+        <div v-if="!collapsed" class="mb-4 hidden px-3 [@media(min-height:720px)]:block">
+          <svg class="h-16 w-20 text-brand" viewBox="0 0 96 72" fill="none" aria-hidden="true">
+            <rect x="28" y="52" width="56" height="10" rx="2" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-opacity=".4" stroke-width="1.5" />
+            <rect x="34" y="41" width="50" height="10" rx="2" fill="currentColor" fill-opacity=".08" stroke="currentColor" stroke-opacity=".4" stroke-width="1.5" />
+            <rect x="30" y="30" width="46" height="10" rx="2" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-opacity=".4" stroke-width="1.5" />
+            <path d="M20 62C20 46 20 32 26 14" stroke="currentColor" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round" />
+            <path d="M21 48c-7-1-10-6-10-10 6 0 10 4 10 10z" fill="currentColor" fill-opacity=".25" />
+            <path d="M22 38c6-1 9-6 9-10-6 0-9 4-9 10z" fill="currentColor" fill-opacity=".25" />
+            <path d="M25 24c-6-1-8-5-8-9 5 0 8 4 8 9z" fill="currentColor" fill-opacity=".25" />
+          </svg>
+          <p class="mt-2 font-display text-[13px] leading-snug text-brand">Good stories<br />build better days</p>
+          <span class="mt-3 block h-px w-8 bg-brand/30"></span>
+        </div>
+
+        <div class="mb-2 border-t border-black/5"></div>
+        <Link href="/logout" :class="[itemCls, 'text-neutral-600 hover:bg-brand-soft hover:text-brand']">
+          <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="logoutIcon" /></svg>
+          <span :class="[labelCls, collapsed ? 'opacity-0' : 'opacity-100']">Log out</span>
+          <span v-if="collapsed" role="tooltip" :class="tipCls">Log out</span>
+        </Link>
+      </div>
     </div>
   </aside>
 
-  <!-- Mobile Bottom Nav -->
+  <!-- Mobile bottom nav -->
   <nav class="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-black/5 bg-white/95 backdrop-blur md:hidden" aria-label="Main">
     <Link
       v-for="[t, h, d] in nav"
@@ -79,7 +116,10 @@ const fmt = (n) => (n > 9 ? '9+' : n)
       class="relative flex min-w-[4.5rem] flex-1 flex-col items-center gap-0.5 px-2 py-2 text-[10px] font-medium transition-colors"
       :class="t === currentRoute ? 'text-brand' : 'text-neutral-500'"
     >
-      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path :d="d" /></svg>
+      <span class="relative">
+        <svg class="h-5 w-5 transition-transform duration-200" :class="t === currentRoute ? '-translate-y-0.5 scale-110' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d" /></svg>
+        <span v-if="badgeOf(t)" class="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold text-white animate-pop">{{ fmt(badgeOf(t)) }}</span>
+      </span>
       {{ t }}
     </Link>
   </nav>

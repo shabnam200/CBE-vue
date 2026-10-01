@@ -92,14 +92,20 @@ export function apiError(e, fallback = 'Something went wrong. Please try again.'
  * ------------------------------------------------------------------ */
 // 'Like New' (mock) -> 'like_new' (filter value)
 const slug = (s) => String(s).toLowerCase().replace(/\s+/g, '_')
+const matchesBookSearch = (book, search) => {
+  const query = search.trim().toLowerCase()
+  if (!query) return true
+  const fields = [book.title, book.author || ''].map((value) => value.toLowerCase())
+  if (query.length > 2) return fields.some((value) => value.includes(query))
+  return fields.some((value) => value.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(query)))
+}
 
 // GET /api/books?q=&genre=&condition=&availability_type=&city=&per_page=
 export async function getBooks({ search, genre, condition, availability_type, city, page = 1, per_page = 12 } = {}) {
   if (USE_MOCK) {
     await wait()
-    const q = (search || '').trim().toLowerCase()
     const filtered = mockBooks.filter((b) =>
-      (!q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)) &&
+      matchesBookSearch(b, search || '') &&
       (!genre || b.genre === genre) &&
       (!condition || slug(b.condition) === condition) &&
       (!availability_type || b.availability_type === availability_type) &&
@@ -146,6 +152,12 @@ export async function getMatches({ page = 1, per_page = 6 } = {}) {
   const res = toPage(await http.get('/matches', { params: { page, per_page } }))
   // backend row = { score, reasons, book } -> normalizeBook ke ulta kore dei
   return { ...res, data: res.data.map((m) => normalizeBook(m.book ?? m)).filter(Boolean) }
+}
+
+export async function getAuthorProfile(name) {
+  if (USE_MOCK) return {}
+  const { data } = await http.get('/open-library/author-profile', { params: { name } })
+  return data.profile || {}
 }
 
 /* ------------------------------------------------------------------ *

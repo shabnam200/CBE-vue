@@ -17,17 +17,27 @@ const step = (d) => (idx.value = (idx.value + d + images.value.length) % images.
           <img :key="images[idx]" :src="images[idx]" :alt="book.title" class="h-full w-full object-cover" />
         </Transition>
         <template v-if="images.length > 1">
-          <button type="button" aria-label="Previous photo" class="absolute left-1.5 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 opacity-0 shadow transition-opacity group-hover:opacity-100 focus:opacity-100" @click="step(-1)"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg></button>
-          <button type="button" aria-label="Next photo" class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 opacity-0 shadow transition-opacity group-hover:opacity-100 focus:opacity-100" @click="step(1)"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg></button>
+          <button type="button" :aria-label="`Previous photo, showing ${idx + 1} of ${images.length}`" class="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-black/10 bg-white/95 p-2 shadow-md transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50" @click="step(-1)"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg></button>
+          <button type="button" :aria-label="`Next photo, showing ${idx + 1} of ${images.length}`" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-black/10 bg-white/95 p-2 shadow-md transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50" @click="step(1)"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
           <span class="absolute bottom-2 right-2 rounded-full bg-ink/70 px-2 py-0.5 text-[10px] font-medium text-white">{{ idx + 1 }} / {{ images.length }}</span>
         </template>
       </template>
       <BookCover v-else :book="book" />
     </div>
-    <div v-if="images.length > 1" class="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-      <button v-for="(src, i) in images" :key="src" type="button" class="h-14 w-11 shrink-0 overflow-hidden rounded-md border-2 transition-all" :class="i === idx ? 'border-brand scale-105' : 'border-transparent opacity-70 hover:opacity-100'" :aria-label="`Photo ${i + 1}`" @click="idx = i">
-        <img :src="src" alt="" class="h-full w-full object-cover" />
-      </button>
+    <div v-if="images.length === 1" class="mt-2 flex items-center justify-between text-[11px] text-neutral-500">
+      <span>Owner photos</span>
+      <span>1 photo</span>
+    </div>
+    <div v-else-if="images.length > 1" class="mt-3">
+      <div class="mb-1.5 flex items-center justify-between text-[11px]">
+        <span class="font-semibold text-neutral-700">Owner photos</span>
+        <span class="text-neutral-500">{{ idx + 1 }} of {{ images.length }}</span>
+      </div>
+      <div class="flex gap-2 overflow-x-auto pb-1.5 no-scrollbar">
+        <button v-for="(src, i) in images" :key="src" type="button" class="h-16 w-12 shrink-0 overflow-hidden rounded-md border-2 transition-opacity" :class="i === idx ? 'border-brand' : 'border-transparent opacity-70 hover:opacity-100'" :aria-label="`Show owner photo ${i + 1} of ${images.length}`" :aria-pressed="i === idx" @click="idx = i">
+          <img :src="src" alt="" class="h-full w-full object-cover" />
+        </button>
+      </div>
     </div>
   </div>
 </template>

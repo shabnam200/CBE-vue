@@ -127,7 +127,7 @@ const requestBook = async (book) => {
     </div>
 
     <!-- Cards -->
-    <section v-else class="space-y-4">
+    <section v-else class="space-y-4 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-8">
       <div class="flex items-center justify-between gap-3">
         <h2 class="font-display text-base font-semibold text-ink">Saved books</h2>
         <div v-if="totalPages > 1" class="flex items-center gap-2">

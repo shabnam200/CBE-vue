@@ -3,8 +3,9 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import Toast from '@/Components/Toast.vue'
 import BookCover from '@/Components/BookCover.vue'
+import Avatar from '@/Components/Avatar.vue'
 import Link from '@/Components/Link.vue'
-import { getRequests, respondToRequest, cancelRequest, completeRequest, submitReview } from '@/api/modules'
+import { getRequests, getUserHistory, respondToRequest, cancelRequest, completeRequest, submitReview } from '@/api/modules'
 import { useToast } from '@/composables/useToast'
 import { timeAgo } from '@/utils/format'
 
@@ -15,6 +16,9 @@ const loading = ref(true)
 const direction = ref('incoming')
 const status = ref('all')
 const busy = ref(null)
+const profileHistory = ref(null)
+const profileLoading = ref(false)
+let profileRequestId = 0
 
 const search = ref('')
 
@@ -84,6 +88,24 @@ const hover = ref(0)
 const comment = ref('')
 const rateFor = ref(null)
 const rating_busy = ref(false)
+
+async function openProfile(user) {
+  const requestId = ++profileRequestId
+  profileHistory.value = { profile: { ...user }, stats: null, ratings: [] }
+  profileLoading.value = true
+  try {
+    profileHistory.value = await getUserHistory(user)
+  } catch {
+    say('Could not load this reader’s profile history.')
+  } finally {
+    if (requestId === profileRequestId) profileLoading.value = false
+  }
+}
+function closeProfile() {
+  profileRequestId++
+  profileHistory.value = null
+  profileLoading.value = false
+}
 
 function openRate(r) { rateFor.value = r; rating.value = 0; hover.value = 0; comment.value = '' }
 function closeRate() { if (!rating_busy.value) rateFor.value = null }
@@ -170,9 +192,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                   <span :key="r.status" class="animate-pop rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize" :class="statusStyle[r.status]">{{ r.status }}</span>
                 </div>
                 <p class="text-xs text-neutral-500">by {{ r.book.author }}</p>
-                <p class="mt-2 text-sm text-neutral-700">
+                <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-neutral-700">
+                  <Avatar :src="r.other_user.profile_photo_url || ''" :name="r.other_user.name" size="h-7 w-7 text-[10px]" />
                   <template v-if="r.direction === 'incoming'"><span class="font-medium">{{ r.other_user.name }}</span> ({{ r.other_user.city }}) wants this book.</template>
                   <template v-else>You asked <span class="font-medium">{{ r.other_user.name }}</span> ({{ r.other_user.city }}).</template>
+                  <button type="button" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30" :aria-label="`View ${r.other_user.name}'s profile and reviews`" :title="`View ${r.other_user.name}'s profile`" @click="openProfile(r.other_user)">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 21v-2a7 7 0 0 1 14 0v2" /></svg>
+                  </button>
                 </p>
                 <p v-if="r.message" class="mt-2 rounded-lg bg-paper px-3 py-2 text-sm text-neutral-600">"{{ r.message }}"</p>
                 <p class="mt-2 text-xs text-neutral-400">{{ timeAgo(r.created_at) }}</p>
@@ -200,6 +226,49 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </section>
 
     <template #overlay>
+      <Transition name="modal">
+        <div v-if="profileHistory" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]" @click.self="closeProfile">
+          <div role="dialog" aria-modal="true" aria-labelledby="reader-profile-title" class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-black/5 bg-white p-5 shadow-xl sm:p-7">
+            <div class="flex items-start gap-3 border-b border-black/5 pb-4">
+              <Avatar :src="profileHistory.profile.profile_photo_url || ''" :name="profileHistory.profile.name" size="h-14 w-14 text-lg" />
+              <div class="min-w-0 flex-1">
+                <h2 id="reader-profile-title" class="truncate font-display text-lg font-semibold">{{ profileHistory.profile.name }}</h2>
+                <p class="truncate text-sm text-neutral-500">{{ profileHistory.profile.city || 'Community reader' }}</p>
+                <p class="mt-1 flex items-center gap-1 text-sm text-[#B07D3A]">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                  {{ Number(profileHistory.profile.reputation_score || 0).toFixed(1) }} reputation
+                </p>
+              </div>
+              <button type="button" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl text-neutral-400 hover:bg-neutral-100 hover:text-ink" aria-label="Close profile" @click="closeProfile">×</button>
+            </div>
+
+            <div v-if="profileLoading" class="mt-5 grid grid-cols-3 gap-2 animate-pulse">
+              <div v-for="i in 3" :key="i" class="h-16 rounded-lg bg-neutral-100"></div>
+            </div>
+            <dl v-else-if="profileHistory.stats" class="mt-5 grid grid-cols-3 gap-2 text-center">
+              <div class="rounded-lg bg-paper p-3"><dd class="font-display text-lg font-semibold text-brand">{{ profileHistory.stats.books_listed }}</dd><dt class="text-[10px] text-neutral-500">Books listed</dt></div>
+              <div class="rounded-lg bg-paper p-3"><dd class="font-display text-lg font-semibold text-brand">{{ profileHistory.stats.exchanges_completed }}</dd><dt class="text-[10px] text-neutral-500">Completed</dt></div>
+              <div class="rounded-lg bg-paper p-3"><dd class="font-display text-lg font-semibold text-brand">{{ profileHistory.stats.ratings_received }}</dd><dt class="text-[10px] text-neutral-500">Ratings</dt></div>
+            </dl>
+
+            <section class="mt-6">
+              <h3 class="font-display text-base font-semibold text-brand">Recent reviews</h3>
+              <p v-if="!profileLoading && !profileHistory.ratings?.length" class="mt-3 rounded-lg bg-paper p-4 text-sm text-neutral-500">No reviews yet.</p>
+              <ul v-else class="mt-3 space-y-3">
+                <li v-for="review in profileHistory.ratings" :key="review.id" class="rounded-lg border border-black/5 p-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="truncate text-xs font-medium">{{ review.rater?.name || 'Reader' }}<template v-if="review.book"> · {{ review.book }}</template></span>
+                    <span class="shrink-0 text-xs font-semibold text-[#B07D3A]">★ {{ review.rating }}/5</span>
+                  </div>
+                  <p v-if="review.comment" class="mt-2 text-sm text-neutral-600">{{ review.comment }}</p>
+                  <p class="mt-1 text-[10px] text-neutral-400">{{ timeAgo(review.created_at) }}</p>
+                </li>
+              </ul>
+            </section>
+          </div>
+        </div>
+      </Transition>
+
       <!-- Rating popup -->
     <Transition name="modal"><div v-if="rateFor" class="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4 backdrop-blur-[2px]" @click.self="closeRate">
       <div role="dialog" aria-modal="true" aria-labelledby="rate-title" class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">

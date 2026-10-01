@@ -210,8 +210,12 @@ const label = 'mb-1 block text-xs font-semibold text-neutral-600'
           <p class="mt-1.5 truncate text-xs font-medium">{{ b.title }}</p>
           <p class="truncate text-[10px] text-neutral-500">by {{ b.author }}</p>
           <div class="mt-2 flex gap-2">
-            <button type="button" class="flex-1 rounded-lg border border-black/10 py-1.5 text-xs font-medium transition-colors hover:border-brand/30 hover:bg-brand-soft hover:text-brand" @click="openEdit(b)">Edit</button>
-            <button type="button" class="flex-1 rounded-lg border border-red-200 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50" @click="deleting = b">Delete</button>
+            <button type="button" class="flex h-8 w-9 items-center justify-center rounded-lg border border-black/10 text-neutral-600 transition-colors hover:border-brand/30 hover:bg-brand-soft hover:text-brand" :title="`Edit ${b.title}`" :aria-label="`Edit ${b.title}`" @click="openEdit(b)">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 5 3 3M4 20l4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z" /></svg>
+            </button>
+            <button type="button" class="flex h-8 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition-colors hover:bg-red-50" :title="`Delete ${b.title}`" :aria-label="`Delete ${b.title}`" @click="deleting = b">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6" /></svg>
+            </button>
           </div>
         </article>
       </TransitionGroup>

@@ -2,7 +2,7 @@
 // resources/js/Pages/Landing.vue
 import Head from '@/Components/Head.vue'
 import Link from '@/Components/Link.vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { auth } from '@/stores/auth'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import BookCover from '../Components/BookCover.vue'
@@ -11,6 +11,7 @@ import { books as mockBooks, categories, testimonials } from '../data/mock'
 import { getBooks, getBook } from '../bookApi'
 
 const router = useRouter()
+const route = useRoute()
 const menuOpen = ref(false)
 const authModalOpen = ref(false)
 const authMode = ref('login')
@@ -18,6 +19,7 @@ const authLoading = ref(false)
 const authError = ref('')
 const fieldErrors = ref({})
 const pendingGenre = ref('')
+const pendingRedirect = ref('')
 const loggingOut = ref(false)
 const loginForm = ref({ email: '', password: '' })
 const registerForm = ref({ name: '', email: '', city: '', password: '', password_confirmation: '', profile_photo: null })
@@ -54,10 +56,11 @@ const switchAuthMode = (mode) => {
 const closeAuthModal = () => {
   authModalOpen.value = false
   pendingGenre.value = ''
+  pendingRedirect.value = ''
   nextTick(() => { authLastFocus?.focus?.(); authLastFocus = null })
 }
 const goToDashboard = () => router.push('/dashboard')
-const goToExplore = () => router.push('/dashboard')
+const goToExplore = () => isAuthenticated.value ? router.push('/dashboard') : openAuthModal('login')
 async function handleLogout() {
   if (loggingOut.value) return
   loggingOut.value = true
@@ -81,9 +84,11 @@ async function submitAuth(request) {
   try {
     await request()
     const genre = pendingGenre.value
+    const redirect = pendingRedirect.value
+    const safeRedirect = redirect.startsWith('/') && !['/login', '/register'].includes(redirect) ? redirect : ''
     const destination = auth.user?.role === 'admin'
       ? '/admin'
-      : genre ? { path: '/dashboard', query: { genre } } : '/dashboard'
+      : safeRedirect || (genre ? { path: '/dashboard', query: { genre } } : '/dashboard')
     closeAuthModal()
     await router.push(destination)
   } catch (error) {
@@ -96,6 +101,14 @@ async function submitAuth(request) {
 
 const handleLogin = () => submitAuth(() => auth.login(loginForm.value))
 const handleRegister = () => submitAuth(() => auth.register(registerForm.value))
+
+watch(() => [route.query.auth, route.query.redirect, route.query.email], ([mode, redirect, initialEmail]) => {
+  if (!['login', 'register'].includes(mode)) return
+  pendingRedirect.value = typeof redirect === 'string' ? redirect : ''
+  if (mode === 'register' && typeof initialEmail === 'string') registerForm.value.email = initialEmail
+  openAuthModal(mode)
+  router.replace({ path: '/', query: {} })
+}, { immediate: true })
 
 /* ---------- Hero: every column of covers scrolls forever, neighbouring columns go opposite ways ---------- */
 const HERO_COLS = 9
@@ -301,7 +314,8 @@ const perks = [
 
 const initials = (n) => String(n || '?').split(' ').map((p) => p[0]).slice(0, 2).join('')
 const join = () => {
-  router.push({ path: '/register', query: email.value ? { email: email.value } : {} })
+  registerForm.value.email = email.value
+  openAuthModal('register')
 }
 </script>
 

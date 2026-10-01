@@ -472,7 +472,7 @@ const join = () => {
         </div>
 
         <!-- Mobile / tablet: vertical path -->
-        <!-- <ol class="relative mx-auto mt-8 max-w-md space-y-8 lg:hidden">
+         <ol class="relative mx-auto mt-8 max-w-md space-y-8 lg:hidden">
           <span aria-hidden="true" class="absolute bottom-10 left-9 top-10 w-px -translate-x-1/2 border-l-2 border-dashed border-brand/25"></span>
           <li v-for="s in journey" :key="s.n" class="relative flex items-start gap-5">
             <span class="how-hex relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center">
@@ -489,7 +489,6 @@ const join = () => {
           </li>
         </ol>
 
-        <!-- Perks -->
         <!-- <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div v-for="p in perks" :key="p.title" class="flex items-start gap-3 rounded-2xl border border-black/5 bg-white p-4 transition-shadow hover:shadow-lg">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
@@ -500,7 +499,7 @@ const join = () => {
               <p class="mt-0.5 text-xs leading-relaxed text-neutral-500">{{ p.text }}</p>
             </div>
           </div>
-        </div>-->
+        </div> -->
       </div> 
     </section>  
 

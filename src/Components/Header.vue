@@ -53,6 +53,12 @@ async function openNote(n) {
   app.read(n)
   router.push(linkOf(n))
 }
+async function logout() {
+  menu.value = null
+  app.stop()
+  await auth.logout()
+  router.replace('/')
+}
 async function readAll() { try { await app.readAll() } catch { /* ignore */ } }
 
 const onKey = (e) => { if (e.key === 'Escape') menu.value = null }
@@ -137,7 +143,7 @@ const pillCls = 'h-10 appearance-none rounded-full border border-black/10 bg-whi
               </div>
                 <div class="p-1.5 text-sm">
                   <router-link to="/profile/edit" class="block rounded-lg px-3 py-2 transition-colors hover:bg-brand-soft" @click="menu = null">Edit profile</router-link>
-                  <router-link to="/logout" class="block rounded-lg px-3 py-2 text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" @click="menu = null">Log out</router-link>
+                  <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-neutral-600 transition-colors hover:bg-rose-50 hover:text-rose-700" @click="logout">Log out</button>
                 </div>
             </div>
           </Transition>

@@ -31,6 +31,10 @@ const unsubs = new Map() // otherId -> unsubscribe fn
 let timer = null
 let startedFor = 0
 let inited = false
+// Gate: Dashboard er sequence (authors -> top books -> recommended -> list) shesh na hoa porjonto chat/Firestore start hobe na.
+// Dashboard bade onno page e AppLayout nijei enable kore dey.
+const enabled = ref(false)
+export const enableChatUnread = () => { enabled.value = true }
 
 const storeKey = (id) => `bookhaven:chat-read:${id}`
 function loadRead(id) {
@@ -120,7 +124,10 @@ function init() {
   if (inited) return
   inited = true
   // Login / logout / user change hole auto restart
-  watch(myId, (id) => (id ? start() : stop()), { immediate: true })
+  watch([myId, enabled], ([id, on]) => {
+    if (!id) { stop(); enabled.value = false } // logout hole abar gate bondho
+    else if (on) start()
+  }, { immediate: true })
 }
 
 export function useChatUnread() {

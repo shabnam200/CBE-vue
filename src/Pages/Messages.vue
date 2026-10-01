@@ -210,7 +210,7 @@ onMounted(async () => {
   >
     <template #actions></template>
 
-    <section class="grid h-[calc(100vh-10.5rem)] min-h-[30rem] overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm md:grid-cols-[20rem_minmax(0,1fr)_21rem]">
+    <section class="grid h-[calc(var(--app-h,100dvh)-14rem)] min-h-[24rem] md:h-[calc(var(--app-h,100dvh)-10.5rem)] md:min-h-[30rem] overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)_18rem]">
       
       <!-- 1st Column: Conversation list -->
       <div class="min-h-0 flex-col border-black/5 md:flex md:border-r" :class="activeId ? 'hidden md:flex' : 'flex'">
@@ -249,7 +249,7 @@ onMounted(async () => {
       </div>
 
       <!-- 2nd Column: Active Chat Thread -->
-      <div class="min-h-0 min-w-0 flex-col border-black/5 md:flex md:border-r" :class="activeId ? 'flex' : 'hidden md:flex'">
+      <div class="min-h-0 min-w-0 flex-col border-black/5 md:flex xl:border-r" :class="activeId ? 'flex' : 'hidden md:flex'">
         <template v-if="active">
           <div class="flex items-center justify-between gap-3 border-b border-black/5 px-4 py-3">
             <div class="flex items-center gap-3 min-w-0">
@@ -322,7 +322,7 @@ onMounted(async () => {
       </div>
 
       <!-- 3rd Column: User Profile Details with Reputation Score -->
-      <div class="hidden min-h-0 flex-col overflow-y-auto bg-white p-4 md:flex">
+      <div class="hidden min-h-0 flex-col overflow-y-auto bg-white p-4 xl:flex">
         <template v-if="active">
           <div class="flex flex-col items-center border-b border-black/5 pb-4 text-center">
             <Avatar :src="photoOf(active.user)" :name="active.user.name" size="h-20 w-20 text-xl" />

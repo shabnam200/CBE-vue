@@ -11,6 +11,7 @@ import AppLayout from '../Layouts/AppLayout.vue'
 import { auth } from '../stores/auth'
 import { useLazyRow } from '../composables/useLazyRow'
 import { app } from '../stores/app'
+import { enableChatUnread } from '../composables/useChatUnread'
 import { me as mockMe } from '../data/mock'
 import { sendExchangeRequest, toggleWishlist } from '../api'
 import { getBooks, getTopBooks, getBook, getMatches, getAuthorProfiles, CONDITIONS, AVAILABILITY } from '../bookApi'
@@ -176,7 +177,7 @@ onMounted(async () => {
   await loadTop()
   await loadMatches()
   await load()
-  if (!gone) app.start()
+  if (!gone) { app.start(); enableChatUnread() }
 })
 
 const open = async (b) => {

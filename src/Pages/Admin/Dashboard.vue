@@ -308,7 +308,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </div>
         </div>
 
-        <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           <div class="rounded-xl border border-black/5 bg-white">
             <div class="flex items-center justify-between border-b border-black/5 px-5 py-4">
               <h2 class="font-display text-lg font-semibold">Newest books</h2>

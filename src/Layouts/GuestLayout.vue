@@ -5,7 +5,7 @@ import Link from '@/Components/Link.vue'
 
 <template>
     <div
-        class="flex min-h-screen flex-col items-center bg-gradient-to-br from-paper via-white to-brand-soft pt-6 sm:justify-center sm:pt-0"
+        class="flex min-h-app flex-col items-center bg-gradient-to-br from-paper via-white to-brand-soft pt-6 sm:justify-center sm:pt-0"
     >
         <div class="animate-pop">
             <Link href="/">

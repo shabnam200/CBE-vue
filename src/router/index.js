@@ -29,7 +29,7 @@ const routes = [
   { path: '/forgot-password', component: () => import('../Pages/Auth/ForgotPassword.vue'), meta: { guest: true } },
   { path: '/reset-password/:token', component: () => import('../Pages/Auth/ResetPassword.vue'), meta: { guest: true }, props: true },
 
-  { path: '/logout', beforeEnter: async () => { await auth.logout(); app.stop(); return '/' } },
+  { path: '/logout', beforeEnter: async () => { app.stop(); await auth.logout(); return '/' } },
 
   { path: '/requests', component: () => import('../Pages/Requests.vue'), meta: { auth: true } },
   { path: '/messages', component: () => import('../Pages/Messages.vue'), meta: { auth: true } },

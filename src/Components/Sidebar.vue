@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue'
 import Link from '@/Components/Link.vue'
 import ApplicationLogo from './ApplicationLogo.vue'
 import { app } from '@/stores/app'
+import { auth } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 import { useChatUnread } from '@/composables/useChatUnread'
 
 defineProps({ currentRoute: { type: String, default: 'Home' } })
@@ -17,6 +19,12 @@ const base = [
   ['Profile', '/profile', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
 ]
 const nav = computed(() => base)
+const router = useRouter()
+async function logout() {
+  app.stop()
+  await auth.logout()
+  router.replace('/')
+}
 const logoutIcon = 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
 
 const chat = useChatUnread()
@@ -34,7 +42,7 @@ const tipCls = 'pointer-events-none absolute left-full top-1/2 z-50 ml-4 -transl
 </script>
 
 <template>
-  <aside class="relative z-40 hidden shrink-0 transition-[width] duration-300 ease-out md:block" :class="collapsed ? 'w-[4.5rem]' : 'w-64'">
+  <aside class="relative z-50 hidden shrink-0 transition-[width] duration-300 ease-out md:block" :class="collapsed ? 'w-[4.5rem]' : 'w-64'">
     <div class="sticky top-0 flex h-screen flex-col border-r border-black/5 bg-white px-3 py-4">
       <!-- Collapse / expand button (sidebar er dhar e aro clearly visible kora holo) -->
       <button
@@ -93,11 +101,11 @@ const tipCls = 'pointer-events-none absolute left-full top-1/2 z-50 ml-4 -transl
         </div>
 
         <div class="mb-2 border-t border-black/5"></div>
-        <Link href="/logout" :class="[itemCls, 'text-neutral-600 hover:bg-brand-soft hover:text-brand']">
+        <button type="button" :class="[itemCls, 'w-full text-left text-neutral-600 hover:bg-brand-soft hover:text-brand']" @click="logout">
           <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="logoutIcon" /></svg>
           <span :class="[labelCls, collapsed ? 'opacity-0' : 'opacity-100']">Log out</span>
           <span v-if="collapsed" role="tooltip" :class="tipCls">Log out</span>
-        </Link>
+        </button>
       </div>
     </div>
   </aside>

@@ -37,3 +37,8 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Full-screen height: --app-h (main.js, asol visible height) -> na thakle dvh -> na thakle vh */
+.h-app { height: 100vh; height: 100dvh; height: var(--app-h, 100dvh); }
+.min-h-app { min-height: 100vh; min-height: 100dvh; min-height: var(--app-h, 100dvh); }

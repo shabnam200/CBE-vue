@@ -160,7 +160,14 @@ export function markConversationSeen(convoId, lastMessageId) {
   try { localStorage.setItem(seenKey(), JSON.stringify(seen)) } catch { /* quota */ }
 }
 
-export async function getConversations() {
+// Ek-i somoy e (app.refresh + chat unread) duibar dakle ekta request-i jabe
+let convoInflight = null
+export function getConversations() {
+  if (!convoInflight) convoInflight = loadConversations().finally(() => { convoInflight = null })
+  return convoInflight
+}
+
+async function loadConversations() {
   if (!USE_MOCK) {
     const rows = await allPages('/exchange-requests')
     const base = rows

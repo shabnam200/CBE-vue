@@ -20,8 +20,12 @@ export const auth = {
   async login(creds) { save(await authApi.login(creds)) },
   async register(data) { save(await authApi.register(data)) },
   async logout() {
-    await authApi.logout()
+    // Age local session clear kori (UI sathe sathe logged-out hoy), server call background e jay.
+    // Server hang/fail korleo user atke thakbe na.
+    const token = localStorage.getItem(TOKEN_KEY)
+    const req = token ? authApi.logout(token) : Promise.resolve()
     localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('cbe_user'); state.user = null
+    await Promise.race([req.catch(() => {}), new Promise((r) => setTimeout(r, 1500))])
   },
   setUser(user) { save({ user }) },
   // App load e ekbar call hoy: token thakle server theke fresh user ane

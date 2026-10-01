@@ -4,6 +4,17 @@ import App from './App.vue'
 import router from './router'
 import { auth } from './stores/auth'
 
+// Android/Samsung/in-app browser e dvh bhul hoy -> asol dekha-jay-emon height ta --app-h e rakhi (AppLayout etai use kore)
+const setAppH = () => {
+  const vv = window.visualViewport
+  const h = vv && vv.scale <= 1.01 ? vv.height : window.innerHeight // zoom korle layout chhoto kori na
+  document.documentElement.style.setProperty('--app-h', `${Math.round(h)}px`)
+}
+setAppH()
+window.addEventListener('resize', setAppH)
+window.addEventListener('orientationchange', setAppH)
+window.visualViewport?.addEventListener('resize', setAppH)
+
 // v-reveal: element screen e ashle fade-up animation chole (scroll reveal)
 const reveal = {
   mounted(el, { value }) {

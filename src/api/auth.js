@@ -50,9 +50,10 @@ export async function register(payload) {
   return pick(await http.post('/register', body)) // POST /api/register
 }
 
-export async function logout() {
+export async function logout(token = localStorage.getItem(TOKEN_KEY)) {
   if (USE_MOCK) { await wait(100); return }
-  await http.post('/logout').catch(() => {})                              // POST /api/logout
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  await http.post('/logout', null, { headers, timeout: 5000 }).catch(() => {}) // POST /api/logout
 }
 
 export async function fetchUser() {

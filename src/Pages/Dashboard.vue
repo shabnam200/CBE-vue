@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import Link from '@/Components/Link.vue'
 import BookCover from '../Components/BookCover.vue'
 import BookCard from '../Components/BookCard.vue'
@@ -7,16 +7,13 @@ import Toast from '../Components/Toast.vue'
 import BookGallery from '../Components/BookGallery.vue'
 import AppLayout from '../Layouts/AppLayout.vue'
 import { auth } from '../stores/auth'
+import { useLazyRow } from '../composables/useLazyRow'
 import { me as mockMe } from '../data/mock'
 import { sendExchangeRequest, toggleWishlist } from '../api'
 import { getBooks, getTopBooks, getBook, getMatches, CONDITIONS, AVAILABILITY } from '../bookApi'
 import { categories, authors } from '../data/mock'
 
 const me = computed(() => ({ ...mockMe, ...(auth.user || {}) }))
-const topBooks = ref([])
-const topLoading = ref(true)
-const matches = ref([])
-const matchesLoading = ref(true)
 const list = ref({ data: [], current_page: 1, last_page: 1, total: 0 })
 const search = ref('')
 const requestedGenre = new URLSearchParams(window.location.search).get('genre')
@@ -52,6 +49,12 @@ function clearFilters() { search.value = ''; filters.value = { genre: '', condit
 const topBooksRef = ref(null)
 const recommendedRef = ref(null)
 
+// Top books + Recommended: shudhu screen e jotogulo dekha jay totogulor API call, baki scroll/Next e
+const { items: topBooks, loading: topLoading, loadingMore: topMoreLoading, loadMore: loadTop, onScroll: onTopScroll, next: topNext } =
+  useLazyRow(getTopBooks, topBooksRef, { onError: () => say('Could not load top books.') })
+const { items: matches, loading: matchesLoading, loadingMore: matchesMoreLoading, loadMore: loadMatches, onScroll: onMatchScroll, next: matchNext } =
+  useLazyRow(getMatches, recommendedRef)
+
 const scrollContainer = (elRef, direction) => {
   if (elRef.value) {
     elRef.value.scrollBy({ left: direction * 250, behavior: 'smooth' })
@@ -86,8 +89,7 @@ const portalEsc = (e) => {
 onBeforeUnmount(() => { window.removeEventListener('keydown', portalEsc); clearTimeout(timer) })
 onMounted(async () => {
   window.addEventListener('keydown', portalEsc)
-  getTopBooks().then((r) => (topBooks.value = r)).catch(() => say('Could not load top books.')).finally(() => (topLoading.value = false))
-  getMatches().then((r) => (matches.value = r)).catch(() => {}).finally(() => (matchesLoading.value = false))
+  nextTick(() => { loadTop(); loadMatches() })
   load()
 })
 
@@ -182,12 +184,13 @@ async function wish(b) {
           <h2 class="font-display text-sm font-bold text-brand">Top Books</h2>
           <div class="flex items-center gap-2 text-[11px] text-neutral-400">
             <button class="hover:text-brand" @click="scrollContainer(topBooksRef, -1)">Prev</button>
-            <button class="hover:text-brand" @click="scrollContainer(topBooksRef, 1)">Next</button>
+            <button class="hover:text-brand" @click="topNext">Next</button>
           </div>
         </div>
-        <div ref="topBooksRef" class="no-scrollbar flex gap-3 overflow-x-auto pb-2 pt-1">
+        <div ref="topBooksRef" class="no-scrollbar flex gap-3 overflow-x-auto pb-2 pt-1" @scroll.passive="onTopScroll">
           <template v-if="topLoading"><div v-for="i in 6" :key="i" class="w-28 shrink-0 sm:w-32"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div></template>
           <BookCard v-for="(b, i) in topBooks" :key="b.id" class="w-28 shrink-0 sm:w-32" :book="b" :index="i" :sub="b.author || b.genre" :wished="wished.has(b.id)" @open="open" @wish="wish" />
+          <div v-if="topMoreLoading && !topLoading" class="w-28 shrink-0 sm:w-32"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div>
           <p v-if="!topLoading && !topBooks.length" class="py-2 text-xs text-neutral-500">No top books yet.</p>
         </div>
       </section>
@@ -198,12 +201,13 @@ async function wish(b) {
           <h2 class="font-display text-sm font-bold text-brand">Recommended for you</h2>
           <div class="flex items-center gap-2 text-[11px] text-neutral-400">
             <button class="hover:text-brand" @click="scrollContainer(recommendedRef, -1)">Prev</button>
-            <button class="hover:text-brand" @click="scrollContainer(recommendedRef, 1)">Next</button>
+            <button class="hover:text-brand" @click="matchNext">Next</button>
           </div>
         </div>
-        <div ref="recommendedRef" class="no-scrollbar flex gap-3 overflow-x-auto pb-2 pt-1">
+        <div ref="recommendedRef" class="no-scrollbar flex gap-3 overflow-x-auto pb-2 pt-1" @scroll.passive="onMatchScroll">
           <template v-if="matchesLoading"><div v-for="i in 5" :key="i" class="w-28 shrink-0 sm:w-32"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div></template>
           <BookCard v-for="(b, i) in matches" :key="b.id" class="w-28 shrink-0 sm:w-32" :book="b" :index="i" :wished="wished.has(b.id)" @open="open" @wish="wish" />
+          <div v-if="matchesMoreLoading && !matchesLoading" class="w-28 shrink-0 sm:w-32"><div class="skeleton aspect-[3/4] rounded-xl"></div><div class="skeleton mt-2 h-3 w-20 rounded"></div></div>
           <p v-if="!matchesLoading && !matches.length" class="py-2 text-xs text-neutral-500">No recommendations yet.</p>
         </div>
       </section>

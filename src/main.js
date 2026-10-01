@@ -1,4 +1,4 @@
-import './css/app.css'
+ import './css/app.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
@@ -22,4 +22,7 @@ const reveal = {
   unmounted(el) { el._io?.disconnect() },
 }
 
-auth.init().finally(() => createApp(App).directive('reveal', reveal).use(router).mount('#app'))
+// App ekhoni mount hobe — /me er jonno wait korbe na (user cbe_user e cached thake).
+// Fresh user background e ashe; token expired hole http.js er 401 interceptor login e pathabe.
+createApp(App).directive('reveal', reveal).use(router).mount('#app')
+auth.init()
